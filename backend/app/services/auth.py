@@ -33,7 +33,7 @@ async def login_user(db: AsyncSession, req: UserLoginRequest) -> TokenResponse:
 
     if user is None or not verify_password(req.password, user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名或密码错误",
         )
 
