@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.database import create_db_and_tables
 from app.utils.redis import close_redis
-from app.routers import auth, session, style
+from app.routers import auth, session, style, styles
 
 settings = get_settings()
 
@@ -20,12 +21,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+PRESETS_DIR = Path(__file__).parent.parent / "presets"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     await create_db_and_tables()
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
     yield
     logger.info("Shutting down...")
     await close_redis()
@@ -71,10 +75,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth.router)
 app.include_router(session.router)
 app.include_router(style.router)
+app.include_router(styles.router)
 
 upload_path = os.path.abspath(settings.UPLOAD_DIR)
 if os.path.isdir(upload_path):
     app.mount("/uploads", StaticFiles(directory=upload_path), name="uploads")
+
+presets_path = str(PRESETS_DIR)
+if PRESETS_DIR.is_dir():
+    app.mount("/presets", StaticFiles(directory=presets_path), name="presets")
 
 
 @app.get("/", tags=["健康检查"])

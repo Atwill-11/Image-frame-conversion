@@ -27,37 +27,21 @@
           <div v-for="record in historyRecords" :key="record.id" class="history-item">
             <div class="history-images">
               <div class="image-block">
-                <el-image
-                  :src="getImageUrl(record.original_image_path)"
-                  fit="cover"
-                  class="history-image"
-                  :preview-src-list="[getImageUrl(record.original_image_path)]"
-                >
+                <el-image :src="getImageUrl(record.original_image_path)" fit="cover" class="history-image" :preview-src-list="[getImageUrl(record.original_image_path)]">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div class="image-label">内容图</div>
               </div>
               <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
-                <el-image
-                  :src="getImageUrl(record.style_image_path)"
-                  fit="cover"
-                  class="history-image"
-                  :preview-src-list="[getImageUrl(record.style_image_path)]"
-                >
+                <el-image :src="getImageUrl(record.style_image_path)" fit="cover" class="history-image" :preview-src-list="[getImageUrl(record.style_image_path)]">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div class="image-label">风格图</div>
               </div>
               <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
-                <el-image
-                  v-if="getResultImageUrl(record)"
-                  :src="getResultImageUrl(record)"
-                  fit="cover"
-                  class="history-image result-image-border"
-                  :preview-src-list="[getResultImageUrl(record)]"
-                >
+                <el-image v-if="getResultImageUrl(record)" :src="getResultImageUrl(record)" fit="cover" class="history-image result-image-border" :preview-src-list="[getResultImageUrl(record)]">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div v-else class="image-error"><el-icon><Picture /></el-icon></div>
@@ -80,18 +64,8 @@
             </div>
 
             <div class="history-actions">
-              <el-button
-                v-if="getResultImageUrl(record)"
-                type="primary"
-                :icon="Download"
-                size="small"
-                @click="downloadImage(getResultImageUrl(record))"
-              >
-                下载
-              </el-button>
-              <el-button type="danger" :icon="Delete" size="small" text @click="handleDeleteRecord(record.id)">
-                删除
-              </el-button>
+              <el-button v-if="getResultImageUrl(record)" type="primary" :icon="Download" size="small" @click="downloadImage(getResultImageUrl(record))">下载</el-button>
+              <el-button type="danger" :icon="Delete" size="small" text @click="handleDeleteRecord(record.id)">删除</el-button>
             </div>
           </div>
         </div>
@@ -109,13 +83,7 @@
           <el-col :xs="24" :sm="12">
             <div class="upload-area">
               <div class="upload-label">内容图片</div>
-              <el-upload
-                class="image-uploader"
-                :auto-upload="false"
-                :show-file-list="false"
-                accept=".jpg,.jpeg,.png,.webp,.bmp"
-                :on-change="(file) => handleFileChange(file, 'content')"
-              >
+              <el-upload class="image-uploader" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="(file) => handleFileChange(file, 'content')">
                 <div v-if="contentPreview" class="preview-wrapper">
                   <img :src="contentPreview" class="preview-image" />
                   <div class="preview-overlay">点击更换</div>
@@ -130,22 +98,64 @@
           <el-col :xs="24" :sm="12">
             <div class="upload-area">
               <div class="upload-label">风格图片</div>
-              <el-upload
-                class="image-uploader"
-                :auto-upload="false"
-                :show-file-list="false"
-                accept=".jpg,.jpeg,.png,.webp,.bmp"
-                :on-change="(file) => handleFileChange(file, 'style')"
-              >
-                <div v-if="stylePreview" class="preview-wrapper">
-                  <img :src="stylePreview" class="preview-image" />
-                  <div class="preview-overlay">点击更换</div>
-                </div>
-                <div v-else class="upload-placeholder">
-                  <el-icon :size="40"><Plus /></el-icon>
-                  <span>上传风格图片</span>
-                </div>
-              </el-upload>
+
+              <el-tabs v-model="styleMode" class="style-tabs">
+                <el-tab-pane label="预设风格" name="preset">
+                  <div class="style-grid">
+                    <div v-for="preset in presetStyles" :key="preset.id" class="style-item" :class="{ active: selectedPreset?.id === preset.id }" @click="selectPreset(preset)">
+                      <div class="style-image-wrapper">
+                        <el-image v-if="preset.image_url" :src="preset.image_url" fit="cover" class="style-preview-image">
+                          <template #error><div class="style-image-error"><el-icon><Picture /></el-icon></div></template>
+                        </el-image>
+                        <div v-else class="style-image-error"><el-icon><Picture /></el-icon></div>
+                      </div>
+                      <div class="style-name">{{ preset.name }}</div>
+                    </div>
+                    <div v-if="presetStyles.length === 0" class="no-styles">
+                      <el-empty description="暂无预设风格" :image-size="40" />
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="自定义风格" name="custom">
+                  <div class="custom-style-section">
+                    <div class="custom-style-list">
+                      <div v-for="custom in customStyles" :key="custom.id" class="style-item" :class="{ active: selectedCustom?.id === custom.id }" @click="selectCustom(custom)">
+                        <div class="style-image-wrapper">
+                          <el-image :src="custom.image_url" fit="cover" class="style-preview-image">
+                            <template #error><div class="style-image-error"><el-icon><Picture /></el-icon></div></template>
+                          </el-image>
+                        </div>
+                        <div class="style-name">{{ custom.name }}</div>
+                        <el-icon class="delete-custom" @click.stop="handleDeleteCustomStyle(custom.id)"><Close /></el-icon>
+                      </div>
+                    </div>
+
+                    <div class="add-custom-style">
+                      <el-upload class="custom-upload" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="handleCustomStyleUpload">
+                        <el-button type="primary" :icon="Plus" size="small">添加自定义风格</el-button>
+                      </el-upload>
+                    </div>
+                  </div>
+                </el-tab-pane>
+
+                <el-tab-pane label="上传图片" name="upload">
+                  <el-upload class="style-uploader" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="(file) => handleFileChange(file, 'style')">
+                    <div v-if="stylePreview" class="preview-wrapper">
+                      <img :src="stylePreview" class="preview-image" />
+                      <div class="preview-overlay">点击更换</div>
+                    </div>
+                    <div v-else class="upload-placeholder">
+                      <el-icon :size="40"><Plus /></el-icon>
+                      <span>上传风格图片</span>
+                    </div>
+                  </el-upload>
+                </el-tab-pane>
+              </el-tabs>
+
+              <div v-if="selectedStyleName" class="selected-style-info">
+                <el-tag type="success">已选择: {{ selectedStyleName }}</el-tag>
+              </div>
             </div>
           </el-col>
         </el-row>
@@ -156,27 +166,34 @@
         </div>
 
         <div class="action-section">
-          <el-button
-            type="primary"
-            size="large"
-            :loading="converting"
-            :disabled="!contentFile || !styleFile"
-            @click="handleConvert"
-          >
+          <el-button type="primary" size="large" :loading="converting" :disabled="!contentFile || !hasStyleImage" @click="handleConvert">
             {{ converting ? "转换中..." : "开始风格转换" }}
           </el-button>
         </div>
       </el-card>
+
+      <el-dialog v-model="customStyleDialogVisible" title="添加自定义风格" width="400px">
+        <el-form :model="customStyleForm">
+          <el-form-item label="风格名称">
+            <el-input v-model="customStyleForm.name" placeholder="请输入风格名称" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="customStyleDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitCustomStyle" :loading="customStyleLoading">确定</el-button>
+        </template>
+      </el-dialog>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useSessionStore } from "../stores/session";
 import { styleConvert, getHistory, deleteHistory } from "../api/style";
+import { getPresetStyles, getCustomStyles, createCustomStyle, deleteCustomStyle } from "../api/styles";
 import { ElMessage } from "element-plus";
-import { Plus, Download, Refresh, Picture, Right, Delete } from "@element-plus/icons-vue";
+import { Plus, Download, Refresh, Picture, Right, Delete, Close } from "@element-plus/icons-vue";
 
 const sessionStore = useSessionStore();
 
@@ -190,6 +207,28 @@ const converting = ref(false);
 const historyRecords = ref([]);
 const historyLoading = ref(false);
 
+const styleMode = ref("preset");
+const presetStyles = ref([]);
+const customStyles = ref([]);
+const selectedPreset = ref(null);
+const selectedCustom = ref(null);
+const customStyleDialogVisible = ref(false);
+const customStyleForm = ref({ name: "", file: null });
+const customStyleLoading = ref(false);
+
+const hasStyleImage = computed(() => {
+  if (styleMode.value === "preset") return !!selectedPreset.value;
+  if (styleMode.value === "custom") return !!selectedCustom.value;
+  return !!styleFile.value;
+});
+
+const selectedStyleName = computed(() => {
+  if (styleMode.value === "preset" && selectedPreset.value) return selectedPreset.value.name;
+  if (styleMode.value === "custom" && selectedCustom.value) return selectedCustom.value.name;
+  if (styleMode.value === "upload" && styleFile.value) return "自定义图片";
+  return "";
+});
+
 function handleFileChange(uploadFile, type) {
   const raw = uploadFile.raw;
   if (!raw) return;
@@ -201,9 +240,70 @@ function handleFileChange(uploadFile, type) {
     } else {
       styleFile.value = raw;
       stylePreview.value = e.target.result;
+      selectedPreset.value = null;
+      selectedCustom.value = null;
     }
   };
   reader.readAsDataURL(raw);
+}
+
+function selectPreset(preset) {
+  selectedPreset.value = preset;
+  selectedCustom.value = null;
+  styleFile.value = null;
+  stylePreview.value = "";
+}
+
+function selectCustom(custom) {
+  selectedCustom.value = custom;
+  selectedPreset.value = null;
+  styleFile.value = null;
+  stylePreview.value = "";
+}
+
+function handleCustomStyleUpload(file) {
+  customStyleForm.value.file = file.raw;
+  customStyleForm.value.name = "";
+  customStyleDialogVisible.value = true;
+}
+
+async function submitCustomStyle() {
+  if (!customStyleForm.value.name.trim()) {
+    ElMessage.warning("请输入风格名称");
+    return;
+  }
+  if (!customStyleForm.value.file) {
+    ElMessage.warning("请选择图片");
+    return;
+  }
+
+  customStyleLoading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("name", customStyleForm.value.name.trim());
+    formData.append("image", customStyleForm.value.file);
+    await createCustomStyle(formData);
+    ElMessage.success("添加成功");
+    customStyleDialogVisible.value = false;
+    await fetchCustomStyles();
+  } catch (e) {
+    // handled by interceptor
+  } finally {
+    customStyleLoading.value = false;
+  }
+}
+
+async function handleDeleteCustomStyle(styleId) {
+  try {
+    await deleteCustomStyle(styleId);
+    customStyles.value = customStyles.value.filter((s) => s.id !== styleId);
+    if (selectedCustom.value?.id === styleId) {
+      selectedCustom.value = null;
+    }
+    ElMessage.success("删除成功");
+  } catch (e) {
+    // handled by interceptor
+  }
 }
 
 function getImageUrl(path) {
@@ -242,9 +342,32 @@ async function fetchHistory() {
   }
 }
 
+async function fetchPresetStyles() {
+  try {
+    const res = await getPresetStyles();
+    presetStyles.value = res.data;
+  } catch (e) {
+    // handled by interceptor
+  }
+}
+
+async function fetchCustomStyles() {
+  try {
+    const res = await getCustomStyles();
+    customStyles.value = res.data.styles;
+  } catch (e) {
+    // handled by interceptor
+  }
+}
+
 async function handleConvert() {
-  if (!contentFile.value || !styleFile.value) {
-    ElMessage.warning("请上传内容图片和风格图片");
+  if (!contentFile.value) {
+    ElMessage.warning("请上传内容图片");
+    return;
+  }
+
+  if (!hasStyleImage.value) {
+    ElMessage.warning("请选择或上传风格图片");
     return;
   }
 
@@ -254,10 +377,23 @@ async function handleConvert() {
     const formData = new FormData();
     formData.append("session_id", sessionStore.currentSessionId);
     formData.append("content_image", contentFile.value);
-    formData.append("style_image", styleFile.value);
     formData.append("prompt", prompt.value);
 
-    const res = await styleConvert(formData);
+    if (styleMode.value === "preset" && selectedPreset.value) {
+      const response = await fetch(selectedPreset.value.image_url);
+      const blob = await response.blob();
+      const file = new File([blob], selectedPreset.value.filename, { type: blob.type });
+      formData.append("style_image", file);
+    } else if (styleMode.value === "custom" && selectedCustom.value) {
+      const response = await fetch(selectedCustom.value.image_url);
+      const blob = await response.blob();
+      const file = new File([blob], "custom_style.jpg", { type: blob.type });
+      formData.append("style_image", file);
+    } else if (styleFile.value) {
+      formData.append("style_image", styleFile.value);
+    }
+
+    await styleConvert(formData);
     ElMessage.success("风格转换完成");
     await fetchHistory();
   } catch (e) {
@@ -295,6 +431,8 @@ watch(
 
 onMounted(() => {
   fetchHistory();
+  fetchPresetStyles();
+  fetchCustomStyles();
 });
 </script>
 
@@ -448,15 +586,15 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.upload-label,
-.prompt-label {
+.upload-label {
   font-size: 14px;
   font-weight: 500;
   color: #606266;
   margin-bottom: 8px;
 }
 
-.image-uploader :deep(.el-upload) {
+.image-uploader :deep(.el-upload),
+.style-uploader :deep(.el-upload) {
   width: 100%;
   border: 2px dashed #dcdfe6;
   border-radius: 12px;
@@ -465,7 +603,8 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.image-uploader :deep(.el-upload:hover) {
+.image-uploader :deep(.el-upload:hover),
+.style-uploader :deep(.el-upload:hover) {
   border-color: #667eea;
 }
 
@@ -525,6 +664,124 @@ onMounted(() => {
   border-radius: 24px;
 }
 
+.style-tabs {
+  margin-top: 8px;
+}
+
+.style-tabs :deep(.el-tabs__content) {
+  padding: 12px 0;
+}
+
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.style-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.style-item:hover {
+  background: #f5f7fa;
+}
+
+.style-item.active {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.style-image-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.style-preview-image {
+  width: 100%;
+  height: 100%;
+}
+
+.style-image-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: #e4e7ed;
+  color: #c0c4cc;
+  border-radius: 6px;
+  font-size: 20px;
+}
+
+.style-name {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-custom {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 14px;
+  color: #f56c6c;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.style-item:hover .delete-custom {
+  opacity: 1;
+}
+
+.no-styles {
+  grid-column: span 4;
+  padding: 20px 0;
+}
+
+.custom-style-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.custom-style-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.add-custom-style {
+  text-align: center;
+}
+
+.custom-upload :deep(.el-upload) {
+  display: inline-block;
+}
+
+.selected-style-info {
+  margin-top: 8px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .history-item {
     flex-direction: column;
@@ -537,6 +794,10 @@ onMounted(() => {
   .history-actions {
     flex-direction: row;
     justify-content: flex-end;
+  }
+
+  .style-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 </style>

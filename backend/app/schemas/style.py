@@ -34,3 +34,31 @@ class HistoryListResponse(BaseModel):
 
 class StyleConvertResponse(BaseModel):
     record: HistoryRecordResponse
+
+
+class PresetStyleResponse(BaseModel):
+    id: str
+    name: str
+    filename: str
+    description: str
+    image_url: str
+
+
+class CustomStyleCreate(BaseModel):
+    name: str = Field(max_length=100)
+
+
+class CustomStyleResponse(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    image_path: str
+    image_url: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CustomStyleListResponse(BaseModel):
+    styles: list[CustomStyleResponse]
+    total: int

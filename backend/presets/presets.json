@@ -1,0 +1,50 @@
+[
+  {
+    "id": "oil_painting",
+    "name": "油画风格",
+    "filename": "oil_painting.jpg",
+    "description": "经典油画艺术风格"
+  },
+  {
+    "id": "watercolor",
+    "name": "水彩风格",
+    "filename": "watercolor.jpg",
+    "description": "清新水彩画风格"
+  },
+  {
+    "id": "sketch",
+    "name": "素描风格",
+    "filename": "sketch.jpg",
+    "description": "铅笔素描风格"
+  },
+  {
+    "id": "anime",
+    "name": "动漫风格",
+    "filename": "anime.jpg",
+    "description": "日系动漫风格"
+  },
+  {
+    "id": "cyberpunk",
+    "name": "赛博朋克",
+    "filename": "cyberpunk.jpg",
+    "description": "未来科技风格"
+  },
+  {
+    "id": "impressionist",
+    "name": "印象派",
+    "filename": "impressionist.jpg",
+    "description": "印象派艺术风格"
+  },
+  {
+    "id": "pixel_art",
+    "name": "像素风格",
+    "filename": "pixel_art.jpg",
+    "description": "复古像素艺术"
+  },
+  {
+    "id": "vangogh",
+    "name": "梵高风格",
+    "filename": "vangogh.jpg",
+    "description": "梵高星空风格"
+  }
+]
