@@ -48,17 +48,6 @@
         </div>
       </div>
 
-      <div class="sidebar-nav" v-if="!isCollapsed">
-        <router-link
-          to="/"
-          class="nav-item"
-          :class="{ active: $route.name === 'Convert' }"
-        >
-          <el-icon><MagicStick /></el-icon>
-          <span>风格转换</span>
-        </router-link>
-      </div>
-
       <div class="sidebar-footer" v-if="!isCollapsed">
         <div class="user-info">
           <el-icon><UserFilled /></el-icon>
@@ -105,7 +94,6 @@ import {
   Plus,
   ChatDotRound,
   MoreFilled,
-  MagicStick,
   UserFilled,
   SwitchButton,
   Fold,
@@ -278,33 +266,6 @@ async function handleLogout() {
   color: #606266;
   font-size: 13px;
   padding: 20px;
-}
-
-.sidebar-nav {
-  padding: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #b0b0b0;
-  text-decoration: none;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.nav-item.active {
-  background: rgba(102, 126, 234, 0.25);
-  color: #fff;
 }
 
 .sidebar-footer {
