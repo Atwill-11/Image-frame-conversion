@@ -2,7 +2,9 @@
   <div class="convert-page">
     <div v-if="!sessionStore.currentSessionId" class="no-session">
       <el-empty description="请先创建或选择一个会话">
-        <el-button type="primary" @click="sessionStore.addSession()">创建会话</el-button>
+        <el-button type="primary" @click="sessionStore.addSession()"
+          >创建会话</el-button
+        >
       </el-empty>
     </div>
 
@@ -11,40 +13,84 @@
         <template #header>
           <div class="history-header">
             <span>历史记录</span>
-            <el-button :icon="Refresh" @click="fetchHistory" :loading="historyLoading" text size="small">刷新</el-button>
+            <el-button
+              :icon="Refresh"
+              @click="fetchHistory"
+              :loading="historyLoading"
+              text
+              size="small"
+              >刷新</el-button
+            >
           </div>
         </template>
 
-        <div v-if="historyLoading && historyRecords.length === 0" class="history-loading">
+        <div
+          v-if="historyLoading && historyRecords.length === 0"
+          class="history-loading"
+        >
           <el-skeleton :rows="4" animated />
         </div>
 
         <div v-else-if="historyRecords.length === 0" class="history-empty">
-          <el-empty description="暂无历史记录，开始您的第一次风格转换吧" :image-size="80" />
+          <el-empty
+            description="暂无历史记录，开始您的第一次风格转换吧"
+            :image-size="80"
+          />
         </div>
 
         <div v-else class="history-list">
-          <div v-for="record in historyRecords" :key="record.id" class="history-item">
+          <div
+            v-for="record in historyRecords"
+            :key="record.id"
+            class="history-item"
+          >
             <div class="history-images">
               <div class="image-block">
-                <el-image :src="getImageUrl(record.original_image_path)" fit="cover" class="history-image" :preview-src-list="[getImageUrl(record.original_image_path)]">
-                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                <el-image
+                  :src="getImageUrl(record.original_image_path)"
+                  fit="cover"
+                  class="history-image"
+                  :preview-src-list="[getImageUrl(record.original_image_path)]"
+                >
+                  <template #error
+                    ><div class="image-error">
+                      <el-icon><Picture /></el-icon></div
+                  ></template>
                 </el-image>
                 <div class="image-label">内容图</div>
               </div>
               <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
-                <el-image :src="getImageUrl(record.style_image_path)" fit="cover" class="history-image" :preview-src-list="[getImageUrl(record.style_image_path)]">
-                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                <el-image
+                  :src="getImageUrl(record.style_image_path)"
+                  fit="cover"
+                  class="history-image"
+                  :preview-src-list="[getImageUrl(record.style_image_path)]"
+                >
+                  <template #error
+                    ><div class="image-error">
+                      <el-icon><Picture /></el-icon></div
+                  ></template>
                 </el-image>
                 <div class="image-label">风格图</div>
               </div>
               <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
-                <el-image v-if="getResultImageUrl(record)" :src="getResultImageUrl(record)" fit="cover" class="history-image result-image-border" :preview-src-list="[getResultImageUrl(record)]">
-                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                <el-image
+                  v-if="getResultImageUrl(record)"
+                  :src="getResultImageUrl(record)"
+                  fit="cover"
+                  class="history-image result-image-border"
+                  :preview-src-list="[getResultImageUrl(record)]"
+                >
+                  <template #error
+                    ><div class="image-error">
+                      <el-icon><Picture /></el-icon></div
+                  ></template>
                 </el-image>
-                <div v-else class="image-error"><el-icon><Picture /></el-icon></div>
+                <div v-else class="image-error">
+                  <el-icon><Picture /></el-icon>
+                </div>
                 <div class="image-label">结果图</div>
               </div>
             </div>
@@ -55,17 +101,38 @@
                 <span class="prompt-text">{{ record.prompt }}</span>
               </div>
               <div class="history-meta">
-                <span class="meta-time">{{ formatTime(record.created_at) }}</span>
-                <span v-if="record.api_duration" class="meta-duration">耗时 {{ record.api_duration }}s</span>
-                <el-tag :type="record.api_status === 200 ? 'success' : 'danger'" size="small">
+                <span class="meta-time">{{
+                  formatTime(record.created_at)
+                }}</span>
+                <span v-if="record.api_duration" class="meta-duration"
+                  >耗时 {{ record.api_duration }}s</span
+                >
+                <el-tag
+                  :type="record.api_status === 200 ? 'success' : 'danger'"
+                  size="small"
+                >
                   {{ record.api_status === 200 ? "成功" : "失败" }}
                 </el-tag>
               </div>
             </div>
 
             <div class="history-actions">
-              <el-button v-if="getResultImageUrl(record)" type="primary" :icon="Download" size="small" @click="downloadImage(getResultImageUrl(record))">下载</el-button>
-              <el-button type="danger" :icon="Delete" size="small" text @click="handleDeleteRecord(record.id)">删除</el-button>
+              <el-button
+                v-if="getResultImageUrl(record)"
+                type="primary"
+                :icon="Download"
+                size="small"
+                @click="downloadImage(getResultImageUrl(record))"
+                >下载</el-button
+              >
+              <el-button
+                type="danger"
+                :icon="Delete"
+                size="small"
+                text
+                @click="handleDeleteRecord(record.id)"
+                >删除</el-button
+              >
             </div>
           </div>
         </div>
@@ -83,7 +150,13 @@
           <el-col :xs="24" :sm="12">
             <div class="upload-area">
               <div class="upload-label">内容图片</div>
-              <el-upload class="image-uploader" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="(file) => handleFileChange(file, 'content')">
+              <el-upload
+                class="image-uploader"
+                :auto-upload="false"
+                :show-file-list="false"
+                accept=".jpg,.jpeg,.png,.webp,.bmp"
+                :on-change="(file) => handleFileChange(file, 'content')"
+              >
                 <div v-if="contentPreview" class="preview-wrapper">
                   <img :src="contentPreview" class="preview-image" />
                   <div class="preview-overlay">点击更换</div>
@@ -102,12 +175,28 @@
               <el-tabs v-model="styleMode" class="style-tabs">
                 <el-tab-pane label="预设风格" name="preset">
                   <div class="style-grid">
-                    <div v-for="preset in presetStyles" :key="preset.id" class="style-item" :class="{ active: selectedPreset?.id === preset.id }" @click="selectPreset(preset)">
+                    <div
+                      v-for="preset in presetStyles"
+                      :key="preset.id"
+                      class="style-item"
+                      :class="{ active: selectedPreset?.id === preset.id }"
+                      @click="selectPreset(preset)"
+                    >
                       <div class="style-image-wrapper">
-                        <el-image v-if="preset.image_url" :src="preset.image_url" fit="cover" class="style-preview-image">
-                          <template #error><div class="style-image-error"><el-icon><Picture /></el-icon></div></template>
+                        <el-image
+                          v-if="preset.image_url"
+                          :src="preset.image_url"
+                          fit="cover"
+                          class="style-preview-image"
+                        >
+                          <template #error
+                            ><div class="style-image-error">
+                              <el-icon><Picture /></el-icon></div
+                          ></template>
                         </el-image>
-                        <div v-else class="style-image-error"><el-icon><Picture /></el-icon></div>
+                        <div v-else class="style-image-error">
+                          <el-icon><Picture /></el-icon>
+                        </div>
                       </div>
                       <div class="style-name">{{ preset.name }}</div>
                     </div>
@@ -120,27 +209,58 @@
                 <el-tab-pane label="自定义风格" name="custom">
                   <div class="custom-style-section">
                     <div class="custom-style-list">
-                      <div v-for="custom in customStyles" :key="custom.id" class="style-item" :class="{ active: selectedCustom?.id === custom.id }" @click="selectCustom(custom)">
+                      <div
+                        v-for="custom in customStyles"
+                        :key="custom.id"
+                        class="style-item"
+                        :class="{ active: selectedCustom?.id === custom.id }"
+                        @click="selectCustom(custom)"
+                      >
                         <div class="style-image-wrapper">
-                          <el-image :src="custom.image_url" fit="cover" class="style-preview-image">
-                            <template #error><div class="style-image-error"><el-icon><Picture /></el-icon></div></template>
+                          <el-image
+                            :src="custom.image_url"
+                            fit="cover"
+                            class="style-preview-image"
+                          >
+                            <template #error
+                              ><div class="style-image-error">
+                                <el-icon><Picture /></el-icon></div
+                            ></template>
                           </el-image>
                         </div>
                         <div class="style-name">{{ custom.name }}</div>
-                        <el-icon class="delete-custom" @click.stop="handleDeleteCustomStyle(custom.id)"><Close /></el-icon>
+                        <el-icon
+                          class="delete-custom"
+                          @click.stop="handleDeleteCustomStyle(custom.id)"
+                          ><Close
+                        /></el-icon>
                       </div>
                     </div>
 
                     <div class="add-custom-style">
-                      <el-upload class="custom-upload" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="handleCustomStyleUpload">
-                        <el-button type="primary" :icon="Plus" size="small">添加自定义风格</el-button>
+                      <el-upload
+                        class="custom-upload"
+                        :auto-upload="false"
+                        :show-file-list="false"
+                        accept=".jpg,.jpeg,.png,.webp,.bmp"
+                        :on-change="handleCustomStyleUpload"
+                      >
+                        <el-button type="primary" :icon="Plus" size="small"
+                          >添加自定义风格</el-button
+                        >
                       </el-upload>
                     </div>
                   </div>
                 </el-tab-pane>
 
                 <el-tab-pane label="上传图片" name="upload">
-                  <el-upload class="style-uploader" :auto-upload="false" :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.bmp" :on-change="(file) => handleFileChange(file, 'style')">
+                  <el-upload
+                    class="style-uploader"
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept=".jpg,.jpeg,.png,.webp,.bmp"
+                    :on-change="(file) => handleFileChange(file, 'style')"
+                  >
                     <div v-if="stylePreview" class="preview-wrapper">
                       <img :src="stylePreview" class="preview-image" />
                       <div class="preview-overlay">点击更换</div>
@@ -161,26 +281,51 @@
         </el-row>
 
         <div class="prompt-section">
-          <div class="prompt-label">转换提示词</div>
-          <el-input v-model="prompt" type="textarea" :rows="2" placeholder="请输入风格转换提示词" />
+          <div class="prompt-label">
+            转换提示词 <span class="prompt-hint">(可选，用于添加额外要求)</span>
+          </div>
+          <el-input
+            v-model="prompt"
+            type="textarea"
+            :rows="2"
+            placeholder="例如：增强色彩对比度、添加复古滤镜效果..."
+          />
         </div>
 
         <div class="action-section">
-          <el-button type="primary" size="large" :loading="converting" :disabled="!contentFile || !hasStyleImage" @click="handleConvert">
+          <el-button
+            type="primary"
+            size="large"
+            :loading="converting"
+            :disabled="!contentFile || !hasStyleImage"
+            @click="handleConvert"
+          >
             {{ converting ? "转换中..." : "开始风格转换" }}
           </el-button>
         </div>
       </el-card>
 
-      <el-dialog v-model="customStyleDialogVisible" title="添加自定义风格" width="400px">
+      <el-dialog
+        v-model="customStyleDialogVisible"
+        title="添加自定义风格"
+        width="400px"
+      >
         <el-form :model="customStyleForm">
           <el-form-item label="风格名称">
-            <el-input v-model="customStyleForm.name" placeholder="请输入风格名称" />
+            <el-input
+              v-model="customStyleForm.name"
+              placeholder="请输入风格名称"
+            />
           </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="customStyleDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitCustomStyle" :loading="customStyleLoading">确定</el-button>
+          <el-button
+            type="primary"
+            @click="submitCustomStyle"
+            :loading="customStyleLoading"
+            >确定</el-button
+          >
         </template>
       </el-dialog>
     </template>
@@ -191,9 +336,22 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { useSessionStore } from "../stores/session";
 import { styleConvert, getHistory, deleteHistory } from "../api/style";
-import { getPresetStyles, getCustomStyles, createCustomStyle, deleteCustomStyle } from "../api/styles";
+import {
+  getPresetStyles,
+  getCustomStyles,
+  createCustomStyle,
+  deleteCustomStyle,
+} from "../api/styles";
 import { ElMessage } from "element-plus";
-import { Plus, Download, Refresh, Picture, Right, Delete, Close } from "@element-plus/icons-vue";
+import {
+  Plus,
+  Download,
+  Refresh,
+  Picture,
+  Right,
+  Delete,
+  Close,
+} from "@element-plus/icons-vue";
 
 const sessionStore = useSessionStore();
 
@@ -201,7 +359,7 @@ const contentFile = ref(null);
 const styleFile = ref(null);
 const contentPreview = ref("");
 const stylePreview = ref("");
-const prompt = ref("请将第一张图片的风格转换为第二张图片的艺术风格，保持人物和构图等内容主体不变。");
+const prompt = ref("");
 const converting = ref(false);
 
 const historyRecords = ref([]);
@@ -223,8 +381,10 @@ const hasStyleImage = computed(() => {
 });
 
 const selectedStyleName = computed(() => {
-  if (styleMode.value === "preset" && selectedPreset.value) return selectedPreset.value.name;
-  if (styleMode.value === "custom" && selectedCustom.value) return selectedCustom.value.name;
+  if (styleMode.value === "preset" && selectedPreset.value)
+    return selectedPreset.value.name;
+  if (styleMode.value === "custom" && selectedCustom.value)
+    return selectedCustom.value.name;
   if (styleMode.value === "upload" && styleFile.value) return "自定义图片";
   return "";
 });
@@ -326,7 +486,13 @@ function getResultImageUrl(record) {
 function formatTime(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 async function fetchHistory() {
@@ -382,7 +548,9 @@ async function handleConvert() {
     if (styleMode.value === "preset" && selectedPreset.value) {
       const response = await fetch(selectedPreset.value.image_url);
       const blob = await response.blob();
-      const file = new File([blob], selectedPreset.value.filename, { type: blob.type });
+      const file = new File([blob], selectedPreset.value.filename, {
+        type: blob.type,
+      });
       formData.append("style_image", file);
     } else if (styleMode.value === "custom" && selectedCustom.value) {
       const response = await fetch(selectedCustom.value.image_url);
@@ -406,7 +574,9 @@ async function handleConvert() {
 async function handleDeleteRecord(recordId) {
   try {
     await deleteHistory(recordId);
-    historyRecords.value = historyRecords.value.filter((r) => r.id !== recordId);
+    historyRecords.value = historyRecords.value.filter(
+      (r) => r.id !== recordId,
+    );
     ElMessage.success("删除成功");
   } catch (e) {
     // handled by interceptor
@@ -426,7 +596,7 @@ watch(
   () => sessionStore.currentSessionId,
   () => {
     fetchHistory();
-  }
+  },
 );
 
 onMounted(() => {
@@ -650,6 +820,12 @@ onMounted(() => {
 
 .prompt-section {
   margin: 20px 0;
+}
+
+.prompt-hint {
+  font-size: 12px;
+  color: #909399;
+  font-weight: normal;
 }
 
 .action-section {

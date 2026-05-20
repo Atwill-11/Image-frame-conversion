@@ -90,13 +90,18 @@ async def call_style_transfer_api(
     content_mime = get_mime_type(content_image_path)
     style_mime = get_mime_type(style_image_path)
 
+    base_prompt = "以第一张图片为内容参考，第二张图片为风格参考，进行艺术风格迁移。请保持原图的人物、构图、场景等主要内容不变，仅转换艺术风格。"
+    full_prompt = base_prompt
+    if prompt and prompt.strip():
+        full_prompt = f"{base_prompt} {prompt.strip()}"
+
     messages = [
         {
             "role": "user",
             "content": [
                 {"image": f"data:{content_mime};base64,{content_base64}"},
                 {"image": f"data:{style_mime};base64,{style_base64}"},
-                {"text": prompt},
+                {"text": full_prompt},
             ],
         }
     ]
