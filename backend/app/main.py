@@ -21,15 +21,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-PRESETS_DIR = Path(__file__).parent.parent / "presets"
+PRESETS_DIR = Path(__file__).resolve().parent.parent / "presets"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     await create_db_and_tables()
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
     yield
     logger.info("Shutting down...")
     await close_redis()
@@ -78,12 +76,11 @@ app.include_router(style.router)
 app.include_router(styles.router)
 
 upload_path = os.path.abspath(settings.UPLOAD_DIR)
-if os.path.isdir(upload_path):
-    app.mount("/uploads", StaticFiles(directory=upload_path), name="uploads")
+os.makedirs(upload_path, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_path), name="uploads")
 
-presets_path = str(PRESETS_DIR)
-if PRESETS_DIR.is_dir():
-    app.mount("/presets", StaticFiles(directory=presets_path), name="presets")
+PRESETS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/presets", StaticFiles(directory=str(PRESETS_DIR)), name="presets")
 
 
 @app.get("/", tags=["健康检查"])

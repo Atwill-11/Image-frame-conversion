@@ -70,7 +70,7 @@ services:
     container_name: image-style-frontend
     restart: unless-stopped
     ports:
-      - "2700:80"
+      - "2500:80"
     depends_on:
       - backend
 

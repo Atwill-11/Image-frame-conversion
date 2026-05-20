@@ -136,6 +136,7 @@ async def call_style_transfer_api(
             "message": response.text[:500],
             "duration": duration,
             "image_url": None,
+            "full_prompt": full_prompt,
         }
 
     data = response.json()
@@ -160,6 +161,7 @@ async def call_style_transfer_api(
             "message": f"解析响应失败: {str(e)}",
             "duration": duration,
             "image_url": None,
+            "full_prompt": full_prompt,
         }
 
     return {
@@ -168,6 +170,7 @@ async def call_style_transfer_api(
         "message": "success",
         "duration": duration,
         "image_url": image_url,
+        "full_prompt": full_prompt,
     }
 
 
@@ -199,13 +202,15 @@ async def create_style_conversion(
     if api_result["success"] and result_image_url and upload_dir:
         result_image_path = await download_result_image(result_image_url, upload_dir)
 
+    full_prompt = api_result.get("full_prompt", prompt)
+
     record = HistoryRecord(
         session_id=session_id,
         original_image_path=content_image_path,
         style_image_path=style_image_path,
         result_image_url=result_image_url,
         result_image_path=result_image_path,
-        prompt=prompt,
+        prompt=full_prompt,
         api_duration=api_result.get("duration"),
         api_status=api_result.get("status_code"),
         api_message=api_result.get("message"),

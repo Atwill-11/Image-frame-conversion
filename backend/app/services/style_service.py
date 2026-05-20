@@ -16,7 +16,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-PRESETS_DIR = Path(__file__).parent.parent.parent / "presets"
+PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "presets"
 
 
 def get_presets_config_path() -> Path:
@@ -55,8 +55,7 @@ async def get_preset_styles() -> list[PresetStyleResponse]:
 
     result = []
     for preset in presets:
-        image_path = get_preset_image_path(preset["filename"])
-        image_url = f"/presets/{preset['filename']}" if image_path.exists() else ""
+        image_url = f"/presets/{preset['filename']}"
         result.append(
             PresetStyleResponse(
                 id=preset["id"],
