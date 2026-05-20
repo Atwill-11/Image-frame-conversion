@@ -18,11 +18,6 @@ const routes = [
         name: 'Convert',
         component: () => import('../views/ConvertView.vue'),
       },
-      {
-        path: 'history',
-        name: 'History',
-        component: () => import('../views/HistoryView.vue'),
-      },
     ],
   },
 ]

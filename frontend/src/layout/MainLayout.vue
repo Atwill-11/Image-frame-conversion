@@ -9,7 +9,13 @@
       <div class="session-section" v-if="!isCollapsed">
         <div class="session-header">
           <span class="session-title">会话列表</span>
-          <el-button type="primary" :icon="Plus" circle size="small" @click="handleAddSession" />
+          <el-button
+            type="primary"
+            :icon="Plus"
+            circle
+            size="small"
+            @click="handleAddSession"
+          />
         </div>
         <div class="session-list">
           <div
@@ -17,16 +23,21 @@
             :key="session.id"
             class="session-item"
             :class="{ active: session.id === sessionStore.currentSessionId }"
-            @click="sessionStore.setCurrentSession(session.id)"
+            @click="handleSessionClick(session.id)"
           >
             <el-icon><ChatDotRound /></el-icon>
             <span class="session-name">{{ session.name }}</span>
-            <el-dropdown trigger="click" @command="(cmd) => handleSessionCommand(cmd, session)">
+            <el-dropdown
+              trigger="click"
+              @command="(cmd) => handleSessionCommand(cmd, session)"
+            >
               <el-icon class="session-more" @click.stop><MoreFilled /></el-icon>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                  <el-dropdown-item command="delete" style="color: #f56c6c">删除</el-dropdown-item>
+                  <el-dropdown-item command="delete" style="color: #f56c6c"
+                    >删除</el-dropdown-item
+                  >
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -38,13 +49,13 @@
       </div>
 
       <div class="sidebar-nav" v-if="!isCollapsed">
-        <router-link to="/" class="nav-item" :class="{ active: $route.name === 'Convert' }">
+        <router-link
+          to="/"
+          class="nav-item"
+          :class="{ active: $route.name === 'Convert' }"
+        >
           <el-icon><MagicStick /></el-icon>
           <span>风格转换</span>
-        </router-link>
-        <router-link to="/history" class="nav-item" :class="{ active: $route.name === 'History' }">
-          <el-icon><Clock /></el-icon>
-          <span>历史记录</span>
         </router-link>
       </div>
 
@@ -71,7 +82,11 @@
     </el-container>
 
     <el-dialog v-model="renameDialogVisible" title="重命名会话" width="400px">
-      <el-input v-model="renameValue" placeholder="请输入新名称" @keyup.enter="confirmRename" />
+      <el-input
+        v-model="renameValue"
+        placeholder="请输入新名称"
+        @keyup.enter="confirmRename"
+      />
       <template #footer>
         <el-button @click="renameDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmRename">确定</el-button>
@@ -81,81 +96,89 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { useSessionStore } from '../stores/session'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { useSessionStore } from "../stores/session";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Plus,
   ChatDotRound,
   MoreFilled,
   MagicStick,
-  Clock,
   UserFilled,
   SwitchButton,
   Fold,
-} from '@element-plus/icons-vue'
+} from "@element-plus/icons-vue";
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const sessionStore = useSessionStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+const sessionStore = useSessionStore();
 
-const isCollapsed = ref(false)
-const renameDialogVisible = ref(false)
-const renameValue = ref('')
-const renameSessionId = ref(null)
+const isCollapsed = ref(false);
+const renameDialogVisible = ref(false);
+const renameValue = ref("");
+const renameSessionId = ref(null);
 
 const pageTitle = computed(() => {
-  if (route.name === 'History') return '历史记录'
-  return '风格转换'
-})
+  if (route.name === "History") return "历史记录";
+  return "风格转换";
+});
 
 onMounted(async () => {
-  await sessionStore.fetchSessions()
-})
+  await sessionStore.fetchSessions();
+});
 
 async function handleAddSession() {
   try {
-    await sessionStore.addSession()
-    ElMessage.success('会话创建成功')
+    await sessionStore.addSession();
+    ElMessage.success("会话创建成功");
   } catch (e) {
     // handled by interceptor
   }
 }
 
+function handleSessionClick(sessionId) {
+  sessionStore.setCurrentSession(sessionId);
+}
+
 function handleSessionCommand(cmd, session) {
-  if (cmd === 'rename') {
-    renameSessionId.value = session.id
-    renameValue.value = session.name
-    renameDialogVisible.value = true
-  } else if (cmd === 'delete') {
-    ElMessageBox.confirm('确定删除该会话及其所有历史记录吗？', '删除确认', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }).then(async () => {
-      await sessionStore.removeSession(session.id)
-      ElMessage.success('删除成功')
-    }).catch(() => {})
+  if (cmd === "rename") {
+    renameSessionId.value = session.id;
+    renameValue.value = session.name;
+    renameDialogVisible.value = true;
+  } else if (cmd === "delete") {
+    ElMessageBox.confirm("确定删除该会话及其所有历史记录吗？", "删除确认", {
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    })
+      .then(async () => {
+        await sessionStore.removeSession(session.id);
+        ElMessage.success("删除成功");
+      })
+      .catch(() => {});
   }
 }
 
 async function confirmRename() {
   if (!renameValue.value.trim()) {
-    ElMessage.warning('会话名称不能为空')
-    return
+    ElMessage.warning("会话名称不能为空");
+    return;
   }
-  await sessionStore.renameSession(renameSessionId.value, renameValue.value.trim())
-  renameDialogVisible.value = false
-  ElMessage.success('重命名成功')
+  await sessionStore.renameSession(
+    renameSessionId.value,
+    renameValue.value.trim(),
+  );
+  renameDialogVisible.value = false;
+  ElMessage.success("重命名成功");
 }
 
 async function handleLogout() {
-  await authStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/login')
+  await authStore.logout();
+  ElMessage.success("已退出登录");
+  router.push("/login");
 }
 </script>
 

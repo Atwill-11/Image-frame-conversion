@@ -10,6 +10,21 @@ from app.schemas.session import (
 )
 from fastapi import HTTPException, status
 from datetime import datetime
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def delete_image_file(image_path: str) -> None:
+    if not image_path:
+        return
+    try:
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            logger.info(f"Deleted image file: {image_path}")
+    except Exception as e:
+        logger.error(f"Failed to delete image file {image_path}: {e}")
 
 
 async def create_session(
@@ -115,6 +130,9 @@ async def delete_session(db: AsyncSession, session_id: int, user_id: int) -> Non
     )
     history_records = history_result.scalars().all()
     for record in history_records:
+        delete_image_file(record.original_image_path)
+        delete_image_file(record.style_image_path)
+        delete_image_file(record.result_image_path)
         await db.delete(record)
 
     await db.delete(session)

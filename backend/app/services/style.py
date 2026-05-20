@@ -60,6 +60,25 @@ async def save_upload_file(file: UploadFile, upload_dir: str, prefix: str = "") 
     return filepath
 
 
+async def download_result_image(image_url: str, upload_dir: str) -> str:
+    os.makedirs(upload_dir, exist_ok=True)
+
+    timestamp = int(time.time() * 1000)
+    filename = f"result_{timestamp}.png"
+    filepath = os.path.join(upload_dir, filename)
+
+    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+        response = await client.get(image_url)
+        if response.status_code == 200:
+            with open(filepath, "wb") as f:
+                f.write(response.content)
+            logger.info(f"Result image downloaded: {filepath}")
+            return filepath
+        else:
+            logger.error(f"Failed to download result image: {response.status_code}")
+            return None
+
+
 async def call_style_transfer_api(
     content_image_path: str,
     style_image_path: str,
@@ -153,6 +172,7 @@ async def create_style_conversion(
     content_image_path: str,
     style_image_path: str,
     prompt: str,
+    upload_dir: str = None,
 ) -> StyleConvertResponse:
     result = await db.execute(
         select(ConversationSession).where(ConversationSession.id == session_id)
@@ -168,11 +188,18 @@ async def create_style_conversion(
         content_image_path, style_image_path, prompt
     )
 
+    result_image_url = api_result.get("image_url")
+    result_image_path = None
+
+    if api_result["success"] and result_image_url and upload_dir:
+        result_image_path = await download_result_image(result_image_url, upload_dir)
+
     record = HistoryRecord(
         session_id=session_id,
         original_image_path=content_image_path,
         style_image_path=style_image_path,
-        result_image_url=api_result.get("image_url"),
+        result_image_url=result_image_url,
+        result_image_path=result_image_path,
         prompt=prompt,
         api_duration=api_result.get("duration"),
         api_status=api_result.get("status_code"),
@@ -181,6 +208,7 @@ async def create_style_conversion(
 
     if not api_result["success"]:
         record.result_image_url = None
+        record.result_image_path = None
 
     db.add(record)
     await db.commit()
@@ -218,5 +246,20 @@ async def delete_history_record(db: AsyncSession, record_id: int) -> None:
             detail="历史记录不存在",
         )
 
+    delete_image_file(record.original_image_path)
+    delete_image_file(record.style_image_path)
+    delete_image_file(record.result_image_path)
+
     await db.delete(record)
     await db.commit()
+
+
+def delete_image_file(image_path: str) -> None:
+    if not image_path:
+        return
+    try:
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            logger.info(f"Deleted image file: {image_path}")
+    except Exception as e:
+        logger.error(f"Failed to delete image file {image_path}: {e}")

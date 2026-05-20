@@ -41,6 +41,7 @@ async def style_convert(
         content_image_path=content_path,
         style_image_path=style_path,
         prompt=prompt,
+        upload_dir=upload_dir,
     )
 
     return ApiResponse(
