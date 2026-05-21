@@ -24,7 +24,7 @@ async def style_convert(
     content_image: UploadFile = File(..., description="内容图片"),
     style_image: UploadFile = File(..., description="风格图片"),
     prompt: str = Form(
-        default="请将第一张图片的风格转换为第二张图片的艺术风格，保持人物和构图等内容主体不变。",
+        default="",
         description="转换提示词",
     ),
     current_user: User = Depends(get_current_user),
