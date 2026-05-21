@@ -9,21 +9,8 @@
     </div>
 
     <template v-else>
-      <el-card class="history-card">
-        <template #header>
-          <div class="history-header">
-            <span>历史记录</span>
-            <el-button
-              :icon="Refresh"
-              @click="fetchHistory"
-              :loading="historyLoading"
-              text
-              size="small"
-              >刷新</el-button
-            >
-          </div>
-        </template>
-
+      <!-- 历史记录区域 -->
+      <div class="history-area">
         <div
           v-if="historyLoading && historyRecords.length === 0"
           class="history-loading"
@@ -44,6 +31,11 @@
             :key="record.id"
             class="history-item"
           >
+            <div class="history-prompt" v-if="record.prompt">
+              <span class="prompt-label">提示词：</span>
+              <span class="prompt-text">{{ record.prompt }}</span>
+            </div>
+
             <div class="history-images">
               <div class="image-block">
                 <el-image
@@ -59,7 +51,6 @@
                 </el-image>
                 <div class="image-label">内容图</div>
               </div>
-              <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
                 <el-image
                   :src="getImageUrl(record.style_image_path)"
@@ -74,13 +65,12 @@
                 </el-image>
                 <div class="image-label">风格图</div>
               </div>
-              <el-icon class="arrow-icon"><Right /></el-icon>
               <div class="image-block">
                 <el-image
                   v-if="getResultImageUrl(record)"
                   :src="getResultImageUrl(record)"
                   fit="cover"
-                  class="history-image result-image-border"
+                  class="history-image result-image"
                   :preview-src-list="[getResultImageUrl(record)]"
                 >
                   <template #error
@@ -93,218 +83,232 @@
                 </div>
                 <div class="image-label">结果图</div>
               </div>
-            </div>
 
-            <div class="history-content">
-              <div class="history-prompt" v-if="record.prompt">
-                <span class="prompt-label">提示词：</span>
-                <span class="prompt-text">{{ record.prompt }}</span>
-              </div>
-              <div class="history-meta">
-                <span class="meta-time">{{
-                  formatTime(record.created_at)
-                }}</span>
-                <span v-if="record.api_duration" class="meta-duration"
-                  >耗时 {{ record.api_duration }}s</span
-                >
-                <el-tag
-                  :type="record.api_status === 200 ? 'success' : 'danger'"
+              <div class="history-actions">
+                <el-button
+                  v-if="getResultImageUrl(record)"
+                  type="primary"
+                  :icon="Download"
                   size="small"
+                  plain
+                  round
+                  class="action-btn download-btn"
+                  @click="downloadImage(getResultImageUrl(record))"
+                  >下载</el-button
                 >
-                  {{ record.api_status === 200 ? "成功" : "失败" }}
-                </el-tag>
+                <el-button
+                  type="danger"
+                  :icon="Delete"
+                  size="small"
+                  plain
+                  round
+                  class="action-btn delete-btn"
+                  @click="handleDeleteRecord(record.id)"
+                  >删除</el-button
+                >
               </div>
             </div>
 
-            <div class="history-actions">
-              <el-button
-                v-if="getResultImageUrl(record)"
-                type="primary"
-                :icon="Download"
-                size="small"
-                @click="downloadImage(getResultImageUrl(record))"
-                >下载</el-button
-              >
-              <el-button
-                type="danger"
-                :icon="Delete"
-                size="small"
-                text
-                @click="handleDeleteRecord(record.id)"
-                >删除</el-button
+            <div class="history-meta">
+              <span class="meta-time">{{ formatTime(record.created_at) }}</span>
+              <span v-if="record.api_duration" class="meta-duration"
+                >耗时 {{ record.api_duration }}s</span
               >
             </div>
           </div>
         </div>
-      </el-card>
+      </div>
 
-      <el-card class="upload-card">
-        <template #header>
-          <div class="card-header">
-            <span>新建风格转换</span>
-            <el-tag type="info" size="small">支持 JPG / PNG 格式</el-tag>
+      <!-- 底部输入区域 -->
+      <div class="input-area">
+        <div class="input-box">
+          <div class="upload-icon" @click="triggerContentUpload">
+            <el-icon :size="24"><Plus /></el-icon>
           </div>
-        </template>
+          <input
+            ref="contentInputRef"
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,.bmp"
+            style="display: none"
+            @change="handleContentFileSelect"
+          />
 
-        <el-row :gutter="24">
-          <el-col :xs="24" :sm="12">
-            <div class="upload-area">
-              <div class="upload-label">内容图片</div>
+          <div class="input-content">
+            <div v-if="contentPreview" class="content-preview-wrapper">
+              <img :src="contentPreview" class="content-preview-image" />
+              <div
+                class="content-preview-overlay"
+                @click="
+                  contentFile = null;
+                  contentPreview = '';
+                "
+              >
+                <el-icon><Close /></el-icon>
+              </div>
+            </div>
+            <textarea
+              v-model="prompt"
+              class="prompt-input"
+              :placeholder="
+                contentPreview
+                  ? '输入额外需求描述...'
+                  : '输入想法、描述或上传参考，开始风格转换...'
+              "
+              rows="3"
+              @keydown.enter.prevent="handleConvert"
+            />
+            <div class="input-toolbar">
+              <div class="toolbar-left">
+                <el-button
+                  type="primary"
+                  size="small"
+                  plain
+                  round
+                  @click="styleDialogVisible = true"
+                >
+                  <el-icon><Brush /></el-icon>
+                  风格选择
+                </el-button>
+                <span v-if="selectedStyleName" class="selected-style">
+                  {{ selectedStyleName }}
+                </span>
+                <span v-if="contentFile" class="file-tag">
+                  <el-icon><Document /></el-icon>
+                  {{ contentFile.name }}
+                </span>
+              </div>
+              <el-button
+                type="primary"
+                round
+                :loading="converting"
+                :disabled="!contentFile || !hasStyleImage"
+                @click="handleConvert"
+                class="send-btn"
+              >
+                <el-icon v-if="!converting"><Top /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 风格选择弹窗 -->
+      <el-dialog
+        v-model="styleDialogVisible"
+        title="选择风格"
+        width="600px"
+        class="style-dialog"
+      >
+        <el-tabs v-model="styleMode" class="style-tabs">
+          <el-tab-pane label="预设风格" name="preset">
+            <div class="style-grid">
+              <div
+                v-for="preset in presetStyles"
+                :key="preset.id"
+                class="style-item"
+                :class="{ active: selectedPreset?.id === preset.id }"
+                @click="selectPreset(preset)"
+              >
+                <div class="style-image-wrapper">
+                  <el-image
+                    v-if="preset.image_url"
+                    :src="preset.image_url"
+                    fit="cover"
+                    class="style-preview-image"
+                  >
+                    <template #error
+                      ><div class="style-image-error">
+                        <el-icon><Picture /></el-icon></div
+                    ></template>
+                  </el-image>
+                  <div v-else class="style-image-error">
+                    <el-icon><Picture /></el-icon>
+                  </div>
+                </div>
+                <div class="style-name">{{ preset.name }}</div>
+              </div>
+              <div v-if="presetStyles.length === 0" class="no-styles">
+                <el-empty description="暂无预设风格" :image-size="40" />
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="自定义风格" name="custom">
+            <div class="custom-style-section">
+              <div class="style-grid">
+                <div
+                  v-for="custom in customStyles"
+                  :key="custom.id"
+                  class="style-item"
+                  :class="{ active: selectedCustom?.id === custom.id }"
+                  @click="selectCustom(custom)"
+                >
+                  <div class="style-image-wrapper">
+                    <el-image
+                      :src="custom.image_url"
+                      fit="cover"
+                      class="style-preview-image"
+                    >
+                      <template #error
+                        ><div class="style-image-error">
+                          <el-icon><Picture /></el-icon></div
+                      ></template>
+                    </el-image>
+                  </div>
+                  <div class="style-name">{{ custom.name }}</div>
+                  <el-icon
+                    class="delete-custom"
+                    @click.stop="handleDeleteCustomStyle(custom.id)"
+                    ><Close
+                  /></el-icon>
+                </div>
+              </div>
+
+              <div class="add-custom-style">
+                <el-upload
+                  class="custom-upload"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  accept=".jpg,.jpeg,.png,.webp,.bmp"
+                  :on-change="handleCustomStyleUpload"
+                >
+                  <el-button type="primary" :icon="Plus" size="small"
+                    >添加自定义风格</el-button
+                  >
+                </el-upload>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="上传图片" name="upload">
+            <div class="upload-style-area">
               <el-upload
-                class="image-uploader"
+                class="style-uploader"
                 :auto-upload="false"
                 :show-file-list="false"
                 accept=".jpg,.jpeg,.png,.webp,.bmp"
-                :on-change="(file) => handleFileChange(file, 'content')"
+                :on-change="(file) => handleFileChange(file, 'style')"
               >
-                <div v-if="contentPreview" class="preview-wrapper">
-                  <img :src="contentPreview" class="preview-image" />
+                <div v-if="stylePreview" class="preview-wrapper">
+                  <img :src="stylePreview" class="preview-image" />
                   <div class="preview-overlay">点击更换</div>
                 </div>
                 <div v-else class="upload-placeholder">
                   <el-icon :size="40"><Plus /></el-icon>
-                  <span>上传内容图片</span>
+                  <span>上传风格图片</span>
                 </div>
               </el-upload>
             </div>
-          </el-col>
-          <el-col :xs="24" :sm="12">
-            <div class="upload-area">
-              <div class="upload-label">风格图片</div>
+          </el-tab-pane>
+        </el-tabs>
 
-              <el-tabs v-model="styleMode" class="style-tabs">
-                <el-tab-pane label="预设风格" name="preset">
-                  <div class="style-grid">
-                    <div
-                      v-for="preset in presetStyles"
-                      :key="preset.id"
-                      class="style-item"
-                      :class="{ active: selectedPreset?.id === preset.id }"
-                      @click="selectPreset(preset)"
-                    >
-                      <div class="style-image-wrapper">
-                        <el-image
-                          v-if="preset.image_url"
-                          :src="preset.image_url"
-                          fit="cover"
-                          class="style-preview-image"
-                        >
-                          <template #error
-                            ><div class="style-image-error">
-                              <el-icon><Picture /></el-icon></div
-                          ></template>
-                        </el-image>
-                        <div v-else class="style-image-error">
-                          <el-icon><Picture /></el-icon>
-                        </div>
-                      </div>
-                      <div class="style-name">{{ preset.name }}</div>
-                    </div>
-                    <div v-if="presetStyles.length === 0" class="no-styles">
-                      <el-empty description="暂无预设风格" :image-size="40" />
-                    </div>
-                  </div>
-                </el-tab-pane>
+        <template #footer>
+          <el-button @click="styleDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmStyleSelect">确定</el-button>
+        </template>
+      </el-dialog>
 
-                <el-tab-pane label="自定义风格" name="custom">
-                  <div class="custom-style-section">
-                    <div class="custom-style-list">
-                      <div
-                        v-for="custom in customStyles"
-                        :key="custom.id"
-                        class="style-item"
-                        :class="{ active: selectedCustom?.id === custom.id }"
-                        @click="selectCustom(custom)"
-                      >
-                        <div class="style-image-wrapper">
-                          <el-image
-                            :src="custom.image_url"
-                            fit="cover"
-                            class="style-preview-image"
-                          >
-                            <template #error
-                              ><div class="style-image-error">
-                                <el-icon><Picture /></el-icon></div
-                            ></template>
-                          </el-image>
-                        </div>
-                        <div class="style-name">{{ custom.name }}</div>
-                        <el-icon
-                          class="delete-custom"
-                          @click.stop="handleDeleteCustomStyle(custom.id)"
-                          ><Close
-                        /></el-icon>
-                      </div>
-                    </div>
-
-                    <div class="add-custom-style">
-                      <el-upload
-                        class="custom-upload"
-                        :auto-upload="false"
-                        :show-file-list="false"
-                        accept=".jpg,.jpeg,.png,.webp,.bmp"
-                        :on-change="handleCustomStyleUpload"
-                      >
-                        <el-button type="primary" :icon="Plus" size="small"
-                          >添加自定义风格</el-button
-                        >
-                      </el-upload>
-                    </div>
-                  </div>
-                </el-tab-pane>
-
-                <el-tab-pane label="上传图片" name="upload">
-                  <el-upload
-                    class="style-uploader"
-                    :auto-upload="false"
-                    :show-file-list="false"
-                    accept=".jpg,.jpeg,.png,.webp,.bmp"
-                    :on-change="(file) => handleFileChange(file, 'style')"
-                  >
-                    <div v-if="stylePreview" class="preview-wrapper">
-                      <img :src="stylePreview" class="preview-image" />
-                      <div class="preview-overlay">点击更换</div>
-                    </div>
-                    <div v-else class="upload-placeholder">
-                      <el-icon :size="40"><Plus /></el-icon>
-                      <span>上传风格图片</span>
-                    </div>
-                  </el-upload>
-                </el-tab-pane>
-              </el-tabs>
-
-              <div v-if="selectedStyleName" class="selected-style-info">
-                <el-tag type="success">已选择: {{ selectedStyleName }}</el-tag>
-              </div>
-            </div>
-          </el-col>
-        </el-row>
-
-        <div class="prompt-section">
-          <div class="prompt-label">
-            转换提示词 <span class="prompt-hint">(可选，用于添加额外要求)</span>
-          </div>
-          <el-input
-            v-model="prompt"
-            type="textarea"
-            :rows="2"
-            placeholder="例如：增强色彩对比度、添加复古滤镜效果..."
-          />
-        </div>
-
-        <div class="action-section">
-          <el-button
-            type="primary"
-            size="large"
-            :loading="converting"
-            :disabled="!contentFile || !hasStyleImage"
-            @click="handleConvert"
-          >
-            {{ converting ? "转换中..." : "开始风格转换" }}
-          </el-button>
-        </div>
-      </el-card>
-
+      <!-- 添加自定义风格弹窗 -->
       <el-dialog
         v-model="customStyleDialogVisible"
         title="添加自定义风格"
@@ -346,11 +350,12 @@ import { ElMessage } from "element-plus";
 import {
   Plus,
   Download,
-  Refresh,
   Picture,
-  Right,
   Delete,
   Close,
+  Brush,
+  Top,
+  Document,
 } from "@element-plus/icons-vue";
 
 const sessionStore = useSessionStore();
@@ -370,9 +375,11 @@ const presetStyles = ref([]);
 const customStyles = ref([]);
 const selectedPreset = ref(null);
 const selectedCustom = ref(null);
+const styleDialogVisible = ref(false);
 const customStyleDialogVisible = ref(false);
 const customStyleForm = ref({ name: "", file: null });
 const customStyleLoading = ref(false);
+const contentInputRef = ref(null);
 
 const hasStyleImage = computed(() => {
   if (styleMode.value === "preset") return !!selectedPreset.value;
@@ -388,6 +395,17 @@ const selectedStyleName = computed(() => {
   if (styleMode.value === "upload" && styleFile.value) return "自定义图片";
   return "";
 });
+
+function triggerContentUpload() {
+  contentInputRef.value?.click();
+}
+
+function handleContentFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  handleFileChange({ raw: file }, "content");
+  e.target.value = "";
+}
 
 function handleFileChange(uploadFile, type) {
   const raw = uploadFile.raw;
@@ -419,6 +437,14 @@ function selectCustom(custom) {
   selectedPreset.value = null;
   styleFile.value = null;
   stylePreview.value = "";
+}
+
+function confirmStyleSelect() {
+  if (!hasStyleImage.value) {
+    ElMessage.warning("请选择或上传风格图片");
+    return;
+  }
+  styleDialogVisible.value = false;
 }
 
 function handleCustomStyleUpload(file) {
@@ -563,6 +589,9 @@ async function handleConvert() {
 
     await styleConvert(formData);
     ElMessage.success("风格转换完成");
+    prompt.value = "";
+    contentFile.value = null;
+    contentPreview.value = "";
     await fetchHistory();
   } catch (e) {
     // handled by interceptor
@@ -608,11 +637,12 @@ onMounted(() => {
 
 <style scoped>
 .convert-page {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  height: 100%;
+  min-height: 0;
 }
 
 .no-session {
@@ -621,16 +651,17 @@ onMounted(() => {
   padding: 80px 0;
 }
 
-.history-card,
-.upload-card {
-  border-radius: 12px;
+/* 历史记录区域 */
+.history-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.history-header,
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.history-area::-webkit-scrollbar {
+  display: none;
 }
 
 .history-loading,
@@ -641,82 +672,25 @@ onMounted(() => {
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .history-item {
   display: flex;
-  gap: 20px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  transition: all 0.2s;
-}
-
-.history-item:hover {
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.history-images {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.image-block {
-  display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.history-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.result-image-border {
-  border: 2px solid #667eea;
-}
-
-.image-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: #e4e7ed;
-  color: #c0c4cc;
-  border-radius: 8px;
-  font-size: 24px;
-}
-
-.image-label {
-  font-size: 11px;
-  color: #909399;
-}
-
-.arrow-icon {
-  color: #c0c4cc;
-  font-size: 16px;
-}
-
-.history-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
+.history-item:last-child {
+  border-bottom: none;
 }
 
 .history-prompt {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #303133;
 }
 
 .prompt-label {
@@ -726,6 +700,86 @@ onMounted(() => {
 
 .prompt-text {
   color: #303133;
+}
+
+.history-images {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.result-image {
+  border: 2px solid #2980b9;
+}
+
+.image-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  background: #e4e7ed;
+  color: #c0c4cc;
+  border-radius: 12px;
+  font-size: 24px;
+}
+
+.image-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.history-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: auto;
+  justify-content: center;
+}
+
+.action-btn {
+  font-size: 12px;
+  padding: 6px 14px;
+  height: auto;
+}
+
+.action-btn.download-btn {
+  background: rgba(41, 128, 185, 0.1);
+  border-color: rgba(41, 128, 185, 0.2);
+  color: #2980b9;
+}
+
+.action-btn.download-btn:hover {
+  background: #2980b9;
+  border-color: #2980b9;
+  color: #fff;
+}
+
+.action-btn.delete-btn {
+  background: rgba(245, 108, 108, 0.1);
+  border-color: rgba(245, 108, 108, 0.2);
+  color: #f56c6c;
+}
+
+.action-btn.delete-btn:hover {
+  background: #f56c6c;
+  border-color: #f56c6c;
+  color: #fff;
 }
 
 .history-meta {
@@ -745,114 +799,181 @@ onMounted(() => {
   color: #67c23a;
 }
 
-.history-actions {
+/* 底部输入区域 */
+.input-area {
+  padding: 16px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 16px 16px 0 0;
+}
+
+.input-area :deep(.el-dialog) {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.input-area :deep(.el-dialog__header) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 20px 24px;
+}
+
+.input-area :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.input-area :deep(.el-dialog__footer) {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 16px 24px;
+}
+
+.input-box {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  align-items: flex-start;
+  background: transparent;
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: none;
+  border: none;
+}
+
+.upload-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.2s;
   flex-shrink: 0;
 }
 
-.upload-area {
-  margin-bottom: 16px;
+.upload-icon:hover {
+  background: #e6f0ff;
+  color: #2980b9;
 }
 
-.upload-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.image-uploader :deep(.el-upload),
-.style-uploader :deep(.el-upload) {
-  width: 100%;
-  border: 2px dashed #dcdfe6;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color 0.3s;
-  overflow: hidden;
-}
-
-.image-uploader :deep(.el-upload:hover),
-.style-uploader :deep(.el-upload:hover) {
-  border-color: #667eea;
-}
-
-.upload-placeholder {
+.input-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 40px 20px;
-  color: #909399;
-  font-size: 14px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4e7ed;
 }
 
-.preview-wrapper {
+.content-preview-wrapper {
   position: relative;
-  width: 100%;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.preview-image {
+.content-preview-image {
   width: 100%;
-  height: 180px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.preview-overlay {
+.content-preview-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 14px;
+  font-size: 18px;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.2s;
+  cursor: pointer;
 }
 
-.preview-wrapper:hover .preview-overlay {
+.content-preview-wrapper:hover .content-preview-overlay {
   opacity: 1;
 }
 
-.prompt-section {
-  margin: 20px 0;
+.prompt-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #303133;
+  resize: none;
+  background: transparent;
+  font-family: inherit;
+  min-height: 60px;
 }
 
-.prompt-hint {
-  font-size: 12px;
+.prompt-input::placeholder {
   color: #909399;
-  font-weight: normal;
 }
 
-.action-section {
-  text-align: center;
-  padding: 8px 0;
+.input-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.action-section .el-button {
-  width: 240px;
-  font-size: 16px;
-  height: 48px;
-  border-radius: 24px;
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.style-tabs {
-  margin-top: 8px;
+.selected-style {
+  font-size: 12px;
+  color: #2980b9;
+  background: rgba(41, 128, 185, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.file-tag {
+  font-size: 12px;
+  color: #67c23a;
+  background: rgba(103, 194, 58, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.send-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 风格选择弹窗 */
+.style-dialog :deep(.el-dialog__body) {
+  padding-top: 10px;
 }
 
 .style-tabs :deep(.el-tabs__content) {
-  padding: 12px 0;
+  padding: 16px 0;
 }
 
 .style-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  max-height: 200px;
+  gap: 16px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -860,9 +981,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
   border: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
@@ -874,14 +995,14 @@ onMounted(() => {
 }
 
 .style-item.active {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.1);
+  border-color: #2980b9;
+  background: rgba(41, 128, 185, 0.08);
 }
 
 .style-image-wrapper {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -894,19 +1015,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background: #e4e7ed;
   color: #c0c4cc;
-  border-radius: 6px;
-  font-size: 20px;
+  border-radius: 10px;
+  font-size: 24px;
 }
 
 .style-name {
-  font-size: 12px;
+  font-size: 13px;
   color: #606266;
   text-align: center;
-  max-width: 70px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -934,15 +1055,7 @@ onMounted(() => {
 .custom-style-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.custom-style-list {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  max-height: 120px;
-  overflow-y: auto;
+  gap: 16px;
 }
 
 .add-custom-style {
@@ -953,27 +1066,81 @@ onMounted(() => {
   display: inline-block;
 }
 
-.selected-style-info {
-  margin-top: 8px;
-  text-align: center;
+.upload-style-area {
+  padding: 20px 0;
+}
+
+.style-uploader :deep(.el-upload) {
+  width: 100%;
+  border: 2px dashed #dcdfe6;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.3s;
+  overflow: hidden;
+}
+
+.style-uploader :deep(.el-upload:hover) {
+  border-color: #2980b9;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: #909399;
+  font-size: 14px;
+}
+
+.preview-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.preview-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.preview-wrapper:hover .preview-overlay {
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
-  .history-item {
-    flex-direction: column;
-  }
-
   .history-images {
-    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .history-actions {
     flex-direction: row;
+    width: 100%;
+    margin-left: 0;
     justify-content: flex-end;
   }
 
   .style-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .input-box {
+    flex-direction: column;
   }
 }
 </style>

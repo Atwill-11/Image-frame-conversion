@@ -176,8 +176,8 @@ async function handleLogout() {
 }
 
 .sidebar {
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: linear-gradient(180deg, #2980b9 0%, #6dd5fa 100%);
+  color: #fff;
   display: flex;
   flex-direction: column;
   transition: width 0.3s;
@@ -187,7 +187,7 @@ async function handleLogout() {
 .sidebar-header {
   padding: 20px 16px;
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .sidebar-header h2 {
@@ -213,7 +213,7 @@ async function handleLogout() {
 
 .session-title {
   font-size: 12px;
-  color: #909399;
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -233,14 +233,15 @@ async function handleLogout() {
   cursor: pointer;
   transition: background 0.2s;
   margin-bottom: 2px;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .session-item.active {
-  background: rgba(102, 126, 234, 0.25);
+  background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
 
@@ -255,6 +256,7 @@ async function handleLogout() {
 .session-more {
   opacity: 0;
   transition: opacity 0.2s;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .session-item:hover .session-more {
@@ -263,14 +265,14 @@ async function handleLogout() {
 
 .session-empty {
   text-align: center;
-  color: #606266;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
   padding: 20px;
 }
 
 .sidebar-footer {
   padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -281,11 +283,11 @@ async function handleLogout() {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #b0b0b0;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .sidebar-footer .el-button {
-  color: #909399;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .top-bar {
@@ -304,7 +306,7 @@ async function handleLogout() {
 }
 
 .main-content {
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
   overflow-y: auto;
 }
 </style>
