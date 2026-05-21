@@ -181,6 +181,7 @@ async def create_style_conversion(
     style_image_path: str,
     prompt: str,
     upload_dir: str = None,
+    style_type: str = "upload",
 ) -> StyleConvertResponse:
     result = await db.execute(
         select(ConversationSession).where(ConversationSession.id == session_id)
@@ -208,6 +209,7 @@ async def create_style_conversion(
         session_id=session_id,
         original_image_path=content_image_path,
         style_image_path=style_image_path,
+        style_type=style_type,
         result_image_url=result_image_url,
         result_image_path=result_image_path,
         prompt=full_prompt,
@@ -257,7 +259,8 @@ async def delete_history_record(db: AsyncSession, record_id: int) -> None:
         )
 
     delete_image_file(record.original_image_path)
-    delete_image_file(record.style_image_path)
+    if record.style_type == "upload":
+        delete_image_file(record.style_image_path)
     delete_image_file(record.result_image_path)
 
     await db.delete(record)

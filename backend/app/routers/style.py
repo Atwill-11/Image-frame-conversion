@@ -1,5 +1,6 @@
 import os
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from pathlib import Path
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.database import get_session
 from app.schemas.style import StyleConvertResponse, HistoryListResponse, HistoryRecordResponse
@@ -17,12 +18,16 @@ from app.config import get_settings
 router = APIRouter(prefix="/api/style", tags=["风格转换"])
 settings = get_settings()
 
+PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "presets"
+
 
 @router.post("/convert", response_model=ApiResponse, summary="执行风格转换")
 async def style_convert(
     session_id: int = Form(..., description="会话ID"),
     content_image: UploadFile = File(..., description="内容图片"),
-    style_image: UploadFile = File(..., description="风格图片"),
+    style_image: UploadFile = File(default=None, description="风格图片(仅当style_type为upload时需要)"),
+    style_type: str = Form(default="upload", description="风格类型: preset/custom/upload"),
+    style_image_path: str = Form(default="", description="风格图片路径(仅当style_type为preset或custom时需要)"),
     prompt: str = Form(
         default="",
         description="转换提示词",
@@ -33,7 +38,28 @@ async def style_convert(
     upload_dir = os.path.join(settings.UPLOAD_DIR, str(current_user.id))
 
     content_path = await save_upload_file(content_image, upload_dir, prefix="content_")
-    style_path = await save_upload_file(style_image, upload_dir, prefix="style_")
+
+    if style_type == "upload":
+        if not style_image:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="style_type为upload时，style_image不能为空",
+            )
+        style_path = await save_upload_file(style_image, upload_dir, prefix="style_")
+    elif style_type == "preset":
+        if not style_image_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="style_type为preset时，style_image_path不能为空",
+            )
+        style_path = str(PRESETS_DIR / style_image_path)
+    else:
+        if not style_image_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="style_type为custom时，style_image_path不能为空",
+            )
+        style_path = style_image_path
 
     result = await create_style_conversion(
         db=db,
@@ -42,6 +68,7 @@ async def style_convert(
         style_image_path=style_path,
         prompt=prompt,
         upload_dir=upload_dir,
+        style_type=style_type,
     )
 
     return ApiResponse(

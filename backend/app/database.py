@@ -2,6 +2,10 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.config import get_settings
+from app.models.user import User
+from app.models.session import ConversationSession
+from app.models.history import HistoryRecord
+from app.models.style import CustomStyle
 
 settings = get_settings()
 

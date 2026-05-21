@@ -279,27 +279,6 @@
               </div>
             </div>
           </el-tab-pane>
-
-          <el-tab-pane label="上传图片" name="upload">
-            <div class="upload-style-area">
-              <el-upload
-                class="style-uploader"
-                :auto-upload="false"
-                :show-file-list="false"
-                accept=".jpg,.jpeg,.png,.webp,.bmp"
-                :on-change="(file) => handleFileChange(file, 'style')"
-              >
-                <div v-if="stylePreview" class="preview-wrapper">
-                  <img :src="stylePreview" class="preview-image" />
-                  <div class="preview-overlay">点击更换</div>
-                </div>
-                <div v-else class="upload-placeholder">
-                  <el-icon :size="40"><Plus /></el-icon>
-                  <span>上传风格图片</span>
-                </div>
-              </el-upload>
-            </div>
-          </el-tab-pane>
         </el-tabs>
 
         <template #footer>
@@ -360,10 +339,19 @@ import {
 
 const sessionStore = useSessionStore();
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+function checkFileSize(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    ElMessage.error(`图片大小 ${sizeMB}MB 超过限制（最大 10MB），请压缩后重试`);
+    return false;
+  }
+  return true;
+}
+
 const contentFile = ref(null);
-const styleFile = ref(null);
 const contentPreview = ref("");
-const stylePreview = ref("");
 const prompt = ref("");
 const converting = ref(false);
 
@@ -383,16 +371,13 @@ const contentInputRef = ref(null);
 
 const hasStyleImage = computed(() => {
   if (styleMode.value === "preset") return !!selectedPreset.value;
-  if (styleMode.value === "custom") return !!selectedCustom.value;
-  return !!styleFile.value;
+  return !!selectedCustom.value;
 });
 
 const selectedStyleName = computed(() => {
   if (styleMode.value === "preset" && selectedPreset.value)
     return selectedPreset.value.name;
-  if (styleMode.value === "custom" && selectedCustom.value)
-    return selectedCustom.value.name;
-  if (styleMode.value === "upload" && styleFile.value) return "自定义图片";
+  if (selectedCustom.value) return selectedCustom.value.name;
   return "";
 });
 
@@ -407,20 +392,14 @@ function handleContentFileSelect(e) {
   e.target.value = "";
 }
 
-function handleFileChange(uploadFile, type) {
+function handleFileChange(uploadFile) {
   const raw = uploadFile.raw;
   if (!raw) return;
+  if (!checkFileSize(raw)) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    if (type === "content") {
-      contentFile.value = raw;
-      contentPreview.value = e.target.result;
-    } else {
-      styleFile.value = raw;
-      stylePreview.value = e.target.result;
-      selectedPreset.value = null;
-      selectedCustom.value = null;
-    }
+    contentFile.value = raw;
+    contentPreview.value = e.target.result;
   };
   reader.readAsDataURL(raw);
 }
@@ -428,15 +407,11 @@ function handleFileChange(uploadFile, type) {
 function selectPreset(preset) {
   selectedPreset.value = preset;
   selectedCustom.value = null;
-  styleFile.value = null;
-  stylePreview.value = "";
 }
 
 function selectCustom(custom) {
   selectedCustom.value = custom;
   selectedPreset.value = null;
-  styleFile.value = null;
-  stylePreview.value = "";
 }
 
 function confirmStyleSelect() {
@@ -448,6 +423,7 @@ function confirmStyleSelect() {
 }
 
 function handleCustomStyleUpload(file) {
+  if (!checkFileSize(file.raw)) return;
   customStyleForm.value.file = file.raw;
   customStyleForm.value.name = "";
   customStyleDialogVisible.value = true;
@@ -495,10 +471,17 @@ async function handleDeleteCustomStyle(styleId) {
 function getImageUrl(path) {
   if (!path) return "";
   const parts = path.split(/[/\\]/);
+
+  const presetsIndex = parts.findIndex((p) => p === "presets");
+  if (presetsIndex !== -1 && presetsIndex < parts.length - 1) {
+    return "/" + parts.slice(presetsIndex).join("/");
+  }
+
   const uploadsIndex = parts.findIndex((p) => p === "uploads");
   if (uploadsIndex !== -1 && uploadsIndex < parts.length - 1) {
     return "/" + parts.slice(uploadsIndex).join("/");
   }
+
   return "/uploads/" + parts[parts.length - 1];
 }
 
@@ -572,19 +555,11 @@ async function handleConvert() {
     formData.append("prompt", prompt.value);
 
     if (styleMode.value === "preset" && selectedPreset.value) {
-      const response = await fetch(selectedPreset.value.image_url);
-      const blob = await response.blob();
-      const file = new File([blob], selectedPreset.value.filename, {
-        type: blob.type,
-      });
-      formData.append("style_image", file);
-    } else if (styleMode.value === "custom" && selectedCustom.value) {
-      const response = await fetch(selectedCustom.value.image_url);
-      const blob = await response.blob();
-      const file = new File([blob], "custom_style.jpg", { type: blob.type });
-      formData.append("style_image", file);
-    } else if (styleFile.value) {
-      formData.append("style_image", styleFile.value);
+      formData.append("style_type", "preset");
+      formData.append("style_image_path", selectedPreset.value.filename);
+    } else if (selectedCustom.value) {
+      formData.append("style_type", "custom");
+      formData.append("style_image_path", selectedCustom.value.image_path);
     }
 
     await styleConvert(formData);
@@ -1064,63 +1039,6 @@ onMounted(() => {
 
 .custom-upload :deep(.el-upload) {
   display: inline-block;
-}
-
-.upload-style-area {
-  padding: 20px 0;
-}
-
-.style-uploader :deep(.el-upload) {
-  width: 100%;
-  border: 2px dashed #dcdfe6;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color 0.3s;
-  overflow: hidden;
-}
-
-.style-uploader :deep(.el-upload:hover) {
-  border-color: #2980b9;
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 20px;
-  color: #909399;
-  font-size: 14px;
-}
-
-.preview-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.preview-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-}
-
-.preview-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.preview-wrapper:hover .preview-overlay {
-  opacity: 1;
 }
 
 @media (max-width: 768px) {

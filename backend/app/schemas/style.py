@@ -16,6 +16,7 @@ class HistoryRecordResponse(BaseModel):
     session_id: int
     original_image_path: str
     style_image_path: str
+    style_type: str = "upload"
     result_image_url: Optional[str] = None
     result_image_path: Optional[str] = None
     prompt: str
