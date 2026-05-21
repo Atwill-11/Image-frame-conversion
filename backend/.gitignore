@@ -1,6 +1,7 @@
 # Python-generated files
 app/__pycache__
 app/**/__pycache__
+__pycache__
 *.py[oc]
 build/
 dist/
