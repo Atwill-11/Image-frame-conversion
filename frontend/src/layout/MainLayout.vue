@@ -164,9 +164,17 @@ async function confirmRename() {
 }
 
 async function handleLogout() {
-  await authStore.logout();
-  ElMessage.success("已退出登录");
-  router.push("/login");
+  ElMessageBox.confirm("是否确认退出？", "退出确认", {
+    confirmButtonText: "退出",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(async () => {
+      await authStore.logout();
+      ElMessage.success("已退出登录");
+      router.push("/login");
+    })
+    .catch(() => {});
 }
 </script>
 
