@@ -35,9 +35,7 @@ async def style_convert(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    upload_dir = os.path.join(settings.UPLOAD_DIR, str(current_user.id))
-
-    content_path = await save_upload_file(content_image, upload_dir, prefix="content_")
+    content_path = await save_upload_file(content_image, current_user.id, prefix="content_")
 
     if style_type == "upload":
         if not style_image:
@@ -45,14 +43,17 @@ async def style_convert(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="style_type为upload时，style_image不能为空",
             )
-        style_path = await save_upload_file(style_image, upload_dir, prefix="style_")
+        style_path = await save_upload_file(style_image, current_user.id, prefix="style_")
     elif style_type == "preset":
         if not style_image_path:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="style_type为preset时，style_image_path不能为空",
             )
-        style_path = str(PRESETS_DIR / style_image_path)
+        if settings.OSS_ENABLED:
+            style_path = f"presets/{style_image_path}"
+        else:
+            style_path = str(PRESETS_DIR / style_image_path)
     else:
         if not style_image_path:
             raise HTTPException(
@@ -67,7 +68,7 @@ async def style_convert(
         content_image_path=content_path,
         style_image_path=style_path,
         prompt=prompt,
-        upload_dir=upload_dir,
+        user_id=current_user.id,
         style_type=style_type,
     )
 

@@ -470,6 +470,8 @@ async function handleDeleteCustomStyle(styleId) {
 
 function getImageUrl(path) {
   if (!path) return "";
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/api/")) return path;
   const parts = path.split(/[/\\]/);
 
   const presetsIndex = parts.findIndex((p) => p === "presets");
@@ -487,6 +489,8 @@ function getImageUrl(path) {
 
 function getResultImageUrl(record) {
   if (record.result_image_path) {
+    if (record.result_image_path.startsWith("http"))
+      return record.result_image_path;
     return getImageUrl(record.result_image_path);
   }
   return record.result_image_url || "";

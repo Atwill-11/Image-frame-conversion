@@ -1,5 +1,6 @@
 import os
 import base64
+import tempfile
 import time
 import logging
 import httpx
@@ -9,12 +10,22 @@ from app.config import get_settings
 from app.models.history import HistoryRecord
 from app.models.session import ConversationSession
 from app.schemas.style import StyleConvertResponse, HistoryRecordResponse, HistoryListResponse
+from app.utils.oss import upload_bytes, delete_object, extract_key_from_url, get_object_bytes
+from app.services.style_service import get_image_url_from_path
 from fastapi import HTTPException, status, UploadFile
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+
+MIME_MAP = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+}
 
 
 def encode_image(image_path: str) -> str:
@@ -24,14 +35,7 @@ def encode_image(image_path: str) -> str:
 
 def get_mime_type(filename: str) -> str:
     ext = os.path.splitext(filename)[1].lower()
-    mime_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-    }
-    return mime_map.get(ext, "image/jpeg")
+    return MIME_MAP.get(ext, "image/jpeg")
 
 
 def validate_image_file(filename: str) -> None:
@@ -43,40 +47,75 @@ def validate_image_file(filename: str) -> None:
         )
 
 
-async def save_upload_file(file: UploadFile, upload_dir: str, prefix: str = "") -> str:
+async def save_upload_file(file: UploadFile, user_id: int, prefix: str = "") -> str:
     validate_image_file(file.filename)
-
-    os.makedirs(upload_dir, exist_ok=True)
 
     ext = os.path.splitext(file.filename)[1].lower()
     timestamp = int(time.time() * 1000)
     filename = f"{prefix}{timestamp}{ext}"
-    filepath = os.path.join(upload_dir, filename)
+    content_type = MIME_MAP.get(ext, "image/jpeg")
 
     content = await file.read()
+
+    if settings.OSS_ENABLED:
+        key = f"uploads/{user_id}/{filename}"
+        url = await upload_bytes(key, content, content_type)
+        return url
+
+    upload_dir = os.path.join(settings.UPLOAD_DIR, str(user_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
     with open(filepath, "wb") as f:
         f.write(content)
-
     return filepath
 
 
-async def download_result_image(image_url: str, upload_dir: str) -> str:
-    os.makedirs(upload_dir, exist_ok=True)
-
+async def download_result_image(image_url: str, user_id: int) -> str:
     timestamp = int(time.time() * 1000)
     filename = f"result_{timestamp}.png"
-    filepath = os.path.join(upload_dir, filename)
 
     async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
         response = await client.get(image_url)
-        if response.status_code == 200:
-            with open(filepath, "wb") as f:
-                f.write(response.content)
-            logger.info(f"Result image downloaded: {filepath}")
-            return filepath
-        else:
+        if response.status_code != 200:
             logger.error(f"Failed to download result image: {response.status_code}")
             return None
+
+        if settings.OSS_ENABLED:
+            key = f"uploads/{user_id}/{filename}"
+            url = await upload_bytes(key, response.content, "image/png")
+            return url
+
+        upload_dir = os.path.join(settings.UPLOAD_DIR, str(user_id))
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(response.content)
+        logger.info(f"Result image downloaded: {filepath}")
+        return filepath
+
+
+async def get_image_base64(image_path: str) -> tuple[str, str]:
+    if image_path.startswith("http"):
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            resp = await client.get(image_path)
+            content_bytes = resp.content
+        content_base64 = base64.b64encode(content_bytes).decode("utf-8")
+        return content_base64, "image/jpeg"
+
+    if image_path.startswith("/api/oss/image/"):
+        key = image_path[len("/api/oss/image/"):]
+        content_bytes, content_type = await get_object_bytes(key)
+        content_base64 = base64.b64encode(content_bytes).decode("utf-8")
+        return content_base64, content_type
+
+    if settings.OSS_ENABLED and not os.path.exists(image_path):
+        content_bytes, content_type = await get_object_bytes(image_path)
+        content_base64 = base64.b64encode(content_bytes).decode("utf-8")
+        return content_base64, content_type
+
+    content_base64 = encode_image(image_path)
+    content_mime = get_mime_type(image_path)
+    return content_base64, content_mime
 
 
 async def call_style_transfer_api(
@@ -84,11 +123,8 @@ async def call_style_transfer_api(
     style_image_path: str,
     prompt: str,
 ) -> dict:
-    content_base64 = encode_image(content_image_path)
-    style_base64 = encode_image(style_image_path)
-
-    content_mime = get_mime_type(content_image_path)
-    style_mime = get_mime_type(style_image_path)
+    content_base64, content_mime = await get_image_base64(content_image_path)
+    style_base64, style_mime = await get_image_base64(style_image_path)
 
     base_prompt = "以第一张图片为内容参考，第二张图片为风格参考，进行艺术风格迁移。请保持原图的人物、构图、场景等主要内容不变，仅转换艺术风格。"
     full_prompt = base_prompt
@@ -180,7 +216,7 @@ async def create_style_conversion(
     content_image_path: str,
     style_image_path: str,
     prompt: str,
-    upload_dir: str = None,
+    user_id: int = None,
     style_type: str = "upload",
 ) -> StyleConvertResponse:
     result = await db.execute(
@@ -200,8 +236,8 @@ async def create_style_conversion(
     result_image_url = api_result.get("image_url")
     result_image_path = None
 
-    if api_result["success"] and result_image_url and upload_dir:
-        result_image_path = await download_result_image(result_image_url, upload_dir)
+    if api_result["success"] and result_image_url and user_id:
+        result_image_path = await download_result_image(result_image_url, user_id)
 
     full_prompt = api_result.get("full_prompt", prompt)
 
@@ -226,8 +262,25 @@ async def create_style_conversion(
     await db.commit()
     await db.refresh(record)
 
+    record_dict = {
+        "id": record.id,
+        "session_id": record.session_id,
+        "original_image_path": record.original_image_path,
+        "original_image_url": get_image_url_from_path(record.original_image_path),
+        "style_image_path": record.style_image_path,
+        "style_image_url": get_image_url_from_path(record.style_image_path),
+        "style_type": record.style_type,
+        "result_image_url": record.result_image_url,
+        "result_image_path": record.result_image_path,
+        "prompt": record.prompt,
+        "api_duration": record.api_duration,
+        "api_status": record.api_status,
+        "api_message": record.api_message,
+        "created_at": record.created_at,
+    }
+
     return StyleConvertResponse(
-        record=HistoryRecordResponse.model_validate(record)
+        record=HistoryRecordResponse(**record_dict)
     )
 
 
@@ -241,8 +294,28 @@ async def get_history_by_session(
     )
     records = result.scalars().all()
 
+    record_responses = []
+    for r in records:
+        record_dict = {
+            "id": r.id,
+            "session_id": r.session_id,
+            "original_image_path": r.original_image_path,
+            "original_image_url": get_image_url_from_path(r.original_image_path),
+            "style_image_path": r.style_image_path,
+            "style_image_url": get_image_url_from_path(r.style_image_path),
+            "style_type": r.style_type,
+            "result_image_url": r.result_image_url,
+            "result_image_path": r.result_image_path,
+            "prompt": r.prompt,
+            "api_duration": r.api_duration,
+            "api_status": r.api_status,
+            "api_message": r.api_message,
+            "created_at": r.created_at,
+        }
+        record_responses.append(HistoryRecordResponse(**record_dict))
+
     return HistoryListResponse(
-        records=[HistoryRecordResponse.model_validate(r) for r in records],
+        records=record_responses,
         total=len(records),
     )
 
@@ -258,10 +331,23 @@ async def delete_history_record(db: AsyncSession, record_id: int) -> None:
             detail="历史记录不存在",
         )
 
-    delete_image_file(record.original_image_path)
-    if record.style_type == "upload":
-        delete_image_file(record.style_image_path)
-    delete_image_file(record.result_image_path)
+    if settings.OSS_ENABLED:
+        content_key = extract_key_from_url(record.original_image_path)
+        if content_key:
+            await delete_object(content_key)
+        if record.style_type == "upload":
+            style_key = extract_key_from_url(record.style_image_path)
+            if style_key:
+                await delete_object(style_key)
+        if record.result_image_path:
+            result_key = extract_key_from_url(record.result_image_path)
+            if result_key:
+                await delete_object(result_key)
+    else:
+        delete_image_file(record.original_image_path)
+        if record.style_type == "upload":
+            delete_image_file(record.style_image_path)
+        delete_image_file(record.result_image_path)
 
     await db.delete(record)
     await db.commit()

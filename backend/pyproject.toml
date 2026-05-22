@@ -17,4 +17,5 @@ dependencies = [
     "httpx>=0.28.0",
     "python-multipart>=0.0.18",
     "cryptography>=42.0.0",
+    "alibabacloud-oss-v2>=0.2.0",
 ]

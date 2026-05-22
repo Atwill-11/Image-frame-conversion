@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.database import create_db_and_tables
 from app.utils.redis import close_redis
-from app.routers import auth, session, style, styles
+from app.utils.oss import close_oss_client
+from app.routers import auth, session, style, styles, oss
 
 settings = get_settings()
 
@@ -31,6 +32,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down...")
     await close_redis()
+    await close_oss_client()
 
 
 app = FastAPI(
@@ -74,6 +76,7 @@ app.include_router(auth.router)
 app.include_router(session.router)
 app.include_router(style.router)
 app.include_router(styles.router)
+app.include_router(oss.router)
 
 upload_path = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(upload_path, exist_ok=True)

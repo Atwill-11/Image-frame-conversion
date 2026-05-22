@@ -24,6 +24,17 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: str = "uploads"
 
+    OSS_ACCESS_KEY_ID: str = ""
+    OSS_ACCESS_KEY_SECRET: str = ""
+    OSS_ENDPOINT: str = ""
+    OSS_BUCKET: str = ""
+    OSS_REGION: str = ""
+    OSS_CUSTOM_DOMAIN: str = ""
+
+    @property
+    def OSS_ENABLED(self) -> bool:
+        return bool(self.OSS_ACCESS_KEY_ID and self.OSS_ACCESS_KEY_SECRET and self.OSS_ENDPOINT and self.OSS_BUCKET)
+
     @property
     def MYSQL_URL(self) -> str:
         return (

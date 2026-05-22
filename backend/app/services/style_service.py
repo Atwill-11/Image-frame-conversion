@@ -11,10 +11,13 @@ from app.schemas.style import (
     CustomStyleResponse,
     CustomStyleListResponse,
 )
+from app.config import get_settings
+from app.utils.oss import upload_bytes, delete_object, extract_key_from_url, get_oss_url
 from fastapi import HTTPException, status
 import logging
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "presets"
 
@@ -27,13 +30,12 @@ def get_preset_image_path(filename: str) -> Path:
     return PRESETS_DIR / filename
 
 
-def get_user_custom_style_dir(user_id: int) -> str:
-    base_dir = Path(__file__).parent.parent.parent / "uploads" / str(user_id) / "custom_styles"
-    base_dir.mkdir(parents=True, exist_ok=True)
-    return str(base_dir)
-
-
 def get_image_url_from_path(image_path: str) -> str:
+    if image_path.startswith("http"):
+        return image_path
+    if image_path.startswith("/api/"):
+        return image_path
+
     parts = re.split(r"[/\\]", image_path)
     uploads_index = -1
     for i, p in enumerate(parts):
@@ -42,6 +44,15 @@ def get_image_url_from_path(image_path: str) -> str:
             break
     if uploads_index != -1 and uploads_index < len(parts) - 1:
         return "/" + "/".join(parts[uploads_index:])
+
+    presets_index = -1
+    for i, p in enumerate(parts):
+        if p == "presets":
+            presets_index = i
+            break
+    if presets_index != -1 and presets_index < len(parts) - 1:
+        return "/" + "/".join(parts[presets_index:])
+
     return "/uploads/" + parts[-1]
 
 
@@ -55,7 +66,10 @@ async def get_preset_styles() -> list[PresetStyleResponse]:
 
     result = []
     for preset in presets:
-        image_url = f"/presets/{preset['filename']}"
+        if settings.OSS_ENABLED:
+            image_url = get_oss_url(f"presets/{preset['filename']}")
+        else:
+            image_url = f"/presets/{preset['filename']}"
         result.append(
             PresetStyleResponse(
                 id=preset["id"],
@@ -110,28 +124,38 @@ async def create_custom_style(
     image_content: bytes,
     filename: str,
 ) -> CustomStyleResponse:
-    style_dir = get_user_custom_style_dir(user_id)
-
     timestamp = int(time.time() * 1000)
     ext = os.path.splitext(filename)[1] or ".jpg"
     new_filename = f"style_{timestamp}{ext}"
-    filepath = os.path.join(style_dir, new_filename)
 
-    with open(filepath, "wb") as f:
-        f.write(image_content)
+    if settings.OSS_ENABLED:
+        key = f"uploads/{user_id}/custom_styles/{new_filename}"
+        content_type_map = {
+            ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png", ".webp": "image/webp", ".bmp": "image/bmp",
+        }
+        content_type = content_type_map.get(ext, "image/jpeg")
+        image_path = await upload_bytes(key, image_content, content_type)
+    else:
+        style_dir = Path(__file__).parent.parent.parent / "uploads" / str(user_id) / "custom_styles"
+        style_dir.mkdir(parents=True, exist_ok=True)
+        filepath = str(style_dir / new_filename)
+        with open(filepath, "wb") as f:
+            f.write(image_content)
+        image_path = filepath
 
-    logger.info(f"Custom style image saved: {filepath}")
+    logger.info(f"Custom style image saved: {image_path}")
 
     custom_style = CustomStyle(
         user_id=user_id,
         name=name,
-        image_path=filepath,
+        image_path=image_path,
     )
     db.add(custom_style)
     await db.commit()
     await db.refresh(custom_style)
 
-    image_url = get_image_url_from_path(filepath)
+    image_url = get_image_url_from_path(image_path)
     return CustomStyleResponse(
         id=custom_style.id,
         user_id=custom_style.user_id,
@@ -159,7 +183,12 @@ async def delete_custom_style(
             detail="风格不存在",
         )
 
-    if style.image_path and os.path.exists(style.image_path):
+    if settings.OSS_ENABLED:
+        key = extract_key_from_url(style.image_path)
+        if key:
+            await delete_object(key)
+            logger.info(f"Deleted OSS custom style image: {key}")
+    elif style.image_path and os.path.exists(style.image_path):
         try:
             os.remove(style.image_path)
             logger.info(f"Deleted custom style image: {style.image_path}")
