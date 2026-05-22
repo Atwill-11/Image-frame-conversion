@@ -4,7 +4,7 @@ from app.database import get_session
 from app.schemas.user import UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse
 from app.schemas.common import ApiResponse
 from app.services.auth import register_user, login_user
-from app.utils.deps import get_current_user, delete_token
+from app.utils.deps import get_current_user, delete_token, refresh_token_expiry
 from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
@@ -52,3 +52,18 @@ async def get_me(current_user: User = Depends(get_current_user)):
         message="success",
         data=UserResponse.model_validate(current_user).model_dump(),
     )
+
+
+@router.post("/refresh-token", response_model=ApiResponse, summary="刷新token有效期")
+async def refresh_token(current_user: User = Depends(get_current_user)):
+    success = await refresh_token_expiry(current_user.id)
+    if success:
+        return ApiResponse(
+            code=0,
+            message="Token有效期已刷新",
+        )
+    else:
+        return ApiResponse(
+            code=1,
+            message="Token刷新失败",
+        )

@@ -85,11 +85,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useSessionStore } from "../stores/session";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { refreshToken } from "../api/auth";
 import {
   Plus,
   ChatDotRound,
@@ -109,6 +110,38 @@ const renameDialogVisible = ref(false);
 const renameValue = ref("");
 const renameSessionId = ref(null);
 
+let lastRefreshTime = 0;
+const MIN_REFRESH_INTERVAL = 60 * 1000;
+
+async function handleUserActivity() {
+  const now = Date.now();
+  if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+    return;
+  }
+
+  lastRefreshTime = now;
+
+  try {
+    await refreshToken();
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+  }
+}
+
+function setupActivityListeners() {
+  const events = ["click", "keydown", "mousemove"];
+  events.forEach((event) => {
+    document.addEventListener(event, handleUserActivity, { passive: true });
+  });
+}
+
+function removeActivityListeners() {
+  const events = ["click", "keydown", "mousemove"];
+  events.forEach((event) => {
+    document.removeEventListener(event, handleUserActivity);
+  });
+}
+
 const pageTitle = computed(() => {
   if (route.name === "History") return "历史记录";
   return "风格转换";
@@ -116,6 +149,11 @@ const pageTitle = computed(() => {
 
 onMounted(async () => {
   await sessionStore.fetchSessions();
+  setupActivityListeners();
+});
+
+onUnmounted(() => {
+  removeActivityListeners();
 });
 
 async function handleAddSession() {

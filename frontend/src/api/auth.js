@@ -15,3 +15,7 @@ export function logout() {
 export function getMe() {
   return request.get('/api/auth/me')
 }
+
+export function refreshToken() {
+  return request.post('/api/auth/refresh-token')
+}

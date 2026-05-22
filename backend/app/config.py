@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
 
     SECRET_KEY: str = "your_secret_key_for_jwt_here"
-    TOKEN_EXPIRE_MINUTES: int = 1440
+    TOKEN_EXPIRE_MINUTES: int = 3
     ALGORITHM: str = "HS256"
 
     UPLOAD_DIR: str = "uploads"

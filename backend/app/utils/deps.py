@@ -83,3 +83,13 @@ async def delete_token(user_id: int):
     r = await get_redis()
     key = f"token:{user_id}"
     await r.delete(key)
+
+
+async def refresh_token_expiry(user_id: int):
+    r = await get_redis()
+    key = f"token:{user_id}"
+    token = await r.get(key)
+    if token:
+        await r.expire(key, settings.TOKEN_EXPIRE_MINUTES * 60)
+        return True
+    return False
