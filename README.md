@@ -107,11 +107,15 @@ Image-frame-conversion/
 │   │   ├── database.py        # 数据库连接
 │   │   └── main.py            # 应用入口
 │   ├── presets/               # 预设风格图片
+│   ├── .env.example           # 环境变量示例
 │   ├── Dockerfile
-│   └── pyproject.toml
+│   └── pyproject.toml         # 项目依赖配置
 ├── frontend/                   # 前端服务
+│   ├── public/                # 静态资源
+│   │   └── example/           # 示例图片
 │   ├── src/
 │   │   ├── api/               # API 请求
+│   │   ├── assets/            # 静态资源
 │   │   ├── layout/            # 布局组件
 │   │   ├── router/            # 路由配置
 │   │   ├── stores/            # 状态管理
@@ -119,10 +123,12 @@ Image-frame-conversion/
 │   │   └── main.js            # 应用入口
 │   ├── nginx.conf             # Nginx 配置
 │   ├── Dockerfile
-│   └── package.json
+│   └── package.json           # 项目依赖配置
+├── docs/                       # 文档目录
+│   └── images/                # 文档图片
 ├── docker-compose.yml         # Docker Compose 配置
 ├── .env.example               # 环境变量示例
-└── README.md
+└── README.md                  # 项目说明文档
 ```
 
 ## Docker 部署
